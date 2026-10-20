@@ -1,0 +1,349 @@
+/*
+ * AKROPOLIS · menús
+ * El menú principal es la expresión más clara de la marca: logotipo, lema y la ciudad viva de fondo.
+ * El de pausa es una ventana sobria sobre la partida.
+ */
+
+/* ---------- Logotipo ---------- */
+.lockup {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.lockup-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.wordmark {
+  font: 600 34px/1 var(--font-display);
+  letter-spacing: 0.24em;
+  margin-right: -0.24em; /* compensa el espaciado de la última letra */
+  color: var(--ui-text);
+}
+
+.lockup--dark .wordmark {
+  color: var(--ui-text-inverse);
+}
+
+.tagline {
+  margin-top: 10px;
+  font: 600 10.5px/1 var(--font-display);
+  letter-spacing: 0.44em;
+  color: var(--ui-gold);
+}
+
+.lockup--small {
+  gap: 10px;
+}
+
+.lockup--small .wordmark {
+  font-size: 13px;
+  letter-spacing: 0.2em;
+}
+
+/* ---------- Fondo de los menús ---------- */
+.menu-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  animation: fade-in 0.25s ease-out;
+}
+
+.menu-backdrop.is-main {
+  /* La ciudad de demostración se ve a la derecha; a la izquierda, la pizarra sostiene el texto */
+  background: linear-gradient(90deg, rgba(14, 29, 40, 0.97) 0%, rgba(23, 43, 58, 0.9) 30%, rgba(23, 43, 58, 0.35) 58%, rgba(23, 43, 58, 0) 78%);
+}
+
+.menu-backdrop.is-pause {
+  background: var(--ui-scrim);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+/* ---------- Menú principal ---------- */
+.menu-main {
+  width: min(470px, 100%);
+  height: 100%;
+  padding: 56px 56px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  overflow-y: auto;
+  /* Si no cabe (ventana baja o interfaz grande) se desplaza, con una barra discreta sobre la pizarra */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ui-text) 16%, transparent) transparent;
+}
+
+.menu-main .menu-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-4);
+  animation: rise-in 0.3s ease-out;
+}
+
+.menu-rule {
+  width: 40px;
+  height: 2px;
+  background: var(--ui-gold);
+  margin: 4px 0 0;
+}
+
+.menu-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.demo-caption {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-panel);
+  pointer-events: none;
+}
+
+.demo-caption .value {
+  font: 600 13px/1.2 var(--font-display);
+  letter-spacing: 0.02em;
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lista de acciones: texto grande, una línea de oro a la izquierda al pasar o enfocar */
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ui-line);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--ui-line);
+  background: transparent;
+  color: var(--ui-text-secondary);
+  text-align: left;
+  position: relative;
+  transition: background 0.12s, color 0.12s;
+}
+
+.menu-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  color: var(--ui-text);
+  background: rgba(234, 230, 220, 0.04);
+  outline: none;
+}
+
+.menu-item:hover::before,
+.menu-item:focus-visible::before {
+  background: var(--ui-gold);
+}
+
+.menu-item .icon-wrap {
+  color: var(--ui-text-muted);
+}
+
+.menu-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.menu-item-label {
+  font: 500 15px/1.2 var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.menu-item-meta {
+  font-size: 11.5px;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item.is-primary {
+  color: var(--ui-text);
+}
+
+.menu-item.is-primary .icon-wrap {
+  color: var(--ui-gold);
+}
+
+.menu-item.is-danger:hover {
+  color: var(--ui-negative);
+}
+
+.menu-item.is-danger:hover::before {
+  background: var(--ui-negative);
+}
+
+/* ---------- Ventana de pausa ---------- */
+.menu-modal {
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  animation: rise-in 0.16s ease-out;
+}
+
+.menu-modal .panel-head {
+  align-items: center;
+}
+
+.panel-head > .pause-brand {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.pause-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.menu-modal .menu-list {
+  border-top: 0;
+}
+
+.menu-modal .menu-item:last-child {
+  border-bottom: 0;
+}
+
+/* ---------- Formularios ---------- */
+.menu-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.menu-form .segmented {
+  display: flex;
+}
+
+.menu-form .segmented > button {
+  flex: 1;
+  height: 32px;
+}
+
+.seed-row {
+  display: flex;
+  gap: 6px;
+}
+
+.seed-row input {
+  flex: 1;
+}
+
+.menu-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.menu-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.menu-heading .title {
+  font-size: 22px;
+}
+
+.menu-message {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 2px solid var(--ui-gold);
+  background: var(--ui-gold-soft);
+  font-size: 12px;
+}
+
+/* ---------- Ranuras de guardado ---------- */
+.slot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.slot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.slot-name {
+  font: 600 13px/1.2 var(--font-display);
+}
+
+.slot-meta {
+  font-size: 11.5px;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@container ui (max-width: 640px) {
+  .menu-main {
+    padding: 40px 24px 24px;
+  }
+  .menu-backdrop.is-main {
+    background: rgba(14, 29, 40, 0.92);
+  }
+  .demo-caption {
+    display: none;
+  }
+}
+
+/* Ventanas bajas (o interfaz a mayor tamaño): menos aire para que quepa el formulario */
+@container ui (max-height: 720px) {
+  .menu-main {
+    padding-top: 36px;
+    padding-bottom: 24px;
+    gap: var(--space-4);
+  }
+}

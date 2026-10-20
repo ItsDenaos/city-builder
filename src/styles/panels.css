@@ -1,0 +1,433 @@
+/* AKROPOLIS · paneles de gestión (presupuesto, estadísticas, ayuda) */
+
+.budget-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tax-row {
+  display: grid;
+  grid-template-columns: 1fr auto 76px;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tax-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-text-secondary);
+}
+
+.tax-income {
+  text-align: right;
+  font-weight: 500;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-control);
+}
+
+.stepper .icon-btn {
+  width: 26px;
+  height: 26px;
+}
+
+.stepper-value {
+  min-width: 44px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.loan {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.loan > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.loan > div > span:first-child {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.loan-offers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.budget-chart {
+  width: 100%;
+  height: 60px;
+}
+
+.stats .tabs {
+  margin-top: -4px;
+}
+
+.stats-chart {
+  width: 100%;
+  aspect-ratio: 640 / 340;
+  max-width: 100%;
+}
+
+.stats-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.stats-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ui-text-secondary);
+}
+
+.stats-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.help .kv > span:last-child {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ---------- Progreso ---------- */
+.rank-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-2);
+}
+
+.rank-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rank-name {
+  font: 600 22px/1.1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.goal {
+  display: grid;
+  grid-template-columns: 1fr 80px 40px;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.goal > span:last-child {
+  text-align: right;
+  color: var(--ui-text-secondary);
+}
+
+.achievements {
+  display: flex;
+  flex-direction: column;
+}
+
+.achievement {
+  display: flex;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--ui-line);
+  color: var(--ui-text-muted);
+}
+
+.achievement > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+}
+
+.achievement-name {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.achievement.is-done {
+  color: var(--ui-text);
+}
+
+.achievement.is-done .icon-wrap {
+  color: var(--ui-gold);
+}
+
+/* ---------- Ágora ---------- */
+.approval-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: var(--space-2);
+}
+
+.approval-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.approval-value {
+  font: 600 22px/1 var(--font-display);
+}
+
+/* La marca del 50 %: lo que hace falta para ganar */
+.approval-track {
+  position: relative;
+}
+
+.approval-mark {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--ui-text-secondary);
+}
+
+.posts,
+.petitions {
+  display: flex;
+  flex-direction: column;
+}
+
+.post {
+  display: flex;
+  gap: 10px;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--ui-line);
+  background: transparent;
+  color: var(--ui-text);
+  text-align: left;
+}
+
+.post:hover {
+  background: var(--ui-surface-3);
+}
+
+.post .icon-wrap {
+  margin-top: 2px;
+}
+
+.post--queja .icon-wrap {
+  color: var(--ui-warning);
+}
+
+.post--elogio .icon-wrap {
+  color: var(--ui-positive);
+}
+
+.post-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.post-text {
+  font-size: 12.5px;
+}
+
+.post-meta {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+}
+
+.petition {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.petition.is-closed {
+  opacity: 0.6;
+}
+
+.petition-head,
+.petition-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.petition-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.petition .goal {
+  grid-template-columns: 1fr 80px 64px;
+}
+
+/* ---------- Ventanas de aviso (rango, escenario) ---------- */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--ui-scrim);
+  animation: fade-in 0.2s ease-out;
+}
+
+.modal {
+  width: min(440px, 100%);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  border-top: 2px solid var(--ui-gold);
+  animation: rise-in 0.25s ease-out;
+}
+
+.modal--negative {
+  border-top-color: var(--ui-negative);
+}
+
+.modal-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-kicker {
+  color: var(--ui-gold);
+}
+
+.modal--negative .modal-kicker {
+  color: var(--ui-negative);
+}
+
+.modal-title {
+  font-size: 26px;
+}
+
+.modal-body {
+  color: var(--ui-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.modal-body p {
+  margin: 0;
+}
+
+.modal-body .kv {
+  text-align: left;
+}
+
+.modal-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-1);
+  color: var(--ui-text);
+  text-align: left;
+  position: relative;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.choice:hover:not(:disabled),
+.choice:focus-visible {
+  background: var(--ui-surface-3);
+  border-color: var(--ui-line-strong);
+}
+
+.choice:hover:not(:disabled)::after,
+.choice:focus-visible::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--ui-gold);
+}
+
+.choice:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.choice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.choice-label {
+  font-weight: 600;
+}
+
+.choice-cost {
+  font-size: 12px;
+  color: var(--ui-gold);
+  white-space: nowrap;
+}
+
+.choice-detail {
+  font-size: 12px;
+  color: var(--ui-text-secondary);
+}
+
+.choice:disabled .choice-detail {
+  color: var(--ui-negative);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-2);
+}

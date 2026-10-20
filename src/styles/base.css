@@ -1,0 +1,130 @@
+/*
+ * AKROPOLIS · base
+ * Los valores (colores, fuentes, espaciado) llegan como variables CSS desde src/theme.ts (applyTheme).
+ * Aquí solo se usan; no se definen colores nuevos.
+ */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ui-surface-1, #172b3a);
+  color: var(--ui-text, #eae6dc);
+  font: 400 13px/1.45 var(--font-body, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
+
+/* Viñeta muy suave sobre el mapa: enfoca la vista en el centro, como la luz de un estudio */
+#vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 60%, rgba(14, 29, 40, 0.38) 100%);
+}
+
+/* La interfaz se escala entera con el ajuste «Tamaño de la interfaz» (--ui-scale); --vw y --vh son
+   el ancho y el alto de la ventana en sus coordenadas, para usarlos en lugar de 100vw y 100vh. */
+:root {
+  --ui-scale: 1;
+  --vw: calc(100vw / var(--ui-scale));
+  --vh: calc(100vh / var(--ui-scale));
+}
+
+#ui {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--vw);
+  height: var(--vh);
+  transform: scale(var(--ui-scale));
+  transform-origin: 0 0;
+  pointer-events: none;
+  /* Las reglas por anchura de la interfaz son consultas a este contenedor, no a la ventana:
+     así tienen en cuenta el tamaño de la interfaz */
+  container: ui / size;
+}
+
+/* Ajuste «Reducir animaciones» */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+#ui > * {
+  pointer-events: auto;
+}
+
+.hidden,
+[hidden] {
+  display: none !important;
+}
+
+/* Números que cambian a menudo: cifras de ancho fijo para que no bailen */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:focus-visible {
+  outline: 1px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ui-surface-4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,679 @@
+/*
+ * AKROPOLIS · HUD
+ * Cuatro zonas que no se mezclan:
+ *   arriba     estado de la ciudad (métricas y tiempo)
+ *   abajo      construcción (dock de herramientas)
+ *   izquierda  contexto (inspector de la casilla)
+ *   derecha    gestión (presupuesto, estadísticas, ayuda)
+ * El resto de la pantalla es para la ciudad.
+ */
+
+/* ---------- Barra superior ---------- */
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  display: flex;
+  align-items: stretch;
+  background: var(--ui-panel);
+  border-bottom: 1px solid var(--ui-line);
+  box-shadow: 0 1px 8px rgba(5, 14, 20, 0.3);
+}
+
+.tb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  border-right: 1px solid var(--ui-line);
+  min-width: 0;
+  max-width: 220px;
+}
+
+.metric.is-button {
+  cursor: pointer;
+}
+
+.tb-city-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.tb-city {
+  font: 600 13px/1.1 var(--font-display);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-rank {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tb-rank-name {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-gold);
+  white-space: nowrap;
+}
+
+.tb-rank-track {
+  width: 52px;
+  height: 2px;
+  background: var(--ui-surface-0);
+}
+
+.tb-rank-fill {
+  display: block;
+  height: 100%;
+  background: var(--ui-gold);
+  transition: width 0.6s;
+}
+
+.tb-metrics {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-right: 1px solid var(--ui-line);
+  white-space: nowrap;
+}
+
+.metric .icon-wrap {
+  color: var(--ui-text-muted);
+}
+
+.metric-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.metric-value {
+  font-weight: 600;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+
+.metric-sub {
+  font-size: 10.5px;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric.is-warning .metric-value {
+  color: var(--ui-warning);
+}
+
+.metric.is-negative .metric-value {
+  color: var(--ui-negative);
+}
+
+/* Demanda RCI: tres barras centradas en cero */
+.demand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-right: 1px solid var(--ui-line);
+}
+
+.demand-bars {
+  display: flex;
+  gap: 4px;
+}
+
+.demand-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.demand-col {
+  position: relative;
+  width: 8px;
+  height: 22px;
+  background: var(--ui-surface-0);
+}
+
+.demand-letter {
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--ui-text-muted);
+}
+
+.demand-col::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 50%;
+  border-top: 1px solid var(--ui-line-strong);
+}
+
+.demand-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  transition: height 0.4s, bottom 0.4s;
+}
+
+.demand-bar--R { background: var(--data-zone-r); }
+.demand-bar--C { background: var(--data-zone-c); }
+.demand-bar--I { background: var(--data-zone-i); }
+
+.tb-time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border-left: 1px solid var(--ui-line);
+}
+
+.tb-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 112px;
+}
+
+.tb-date .icon-wrap {
+  color: var(--ui-text-muted);
+}
+
+/* En pantallas estrechas, primero se quitan los subtítulos y el nombre de la ciudad */
+@container ui (max-width: 1180px) {
+  .metric-sub {
+    display: none;
+  }
+  .metric,
+  .demand {
+    padding: 0 10px;
+  }
+}
+
+@container ui (max-width: 1020px) {
+  .tb-city-block {
+    display: none;
+  }
+  .tb-brand {
+    padding-right: var(--space-3);
+  }
+}
+
+/* ---------- Carril de gestión (derecha) ---------- */
+.rail {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
+.rail-sep {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--ui-line);
+}
+
+.side-panel {
+  position: absolute;
+  top: 60px;
+  right: 64px;
+  width: 360px;
+  max-height: calc(var(--vh) - 150px);
+  display: flex;
+  flex-direction: column;
+  animation: rise-in 0.14s ease-out;
+}
+
+.side-panel .panel-body {
+  overflow-y: auto;
+}
+
+/* ---------- Avisos (arriba, centrados) ---------- */
+.toasts {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(var(--vw) - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none !important;
+}
+
+.toast-action {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 12px;
+  pointer-events: auto;
+}
+
+.toast-action:hover {
+  background: var(--ui-surface-3);
+}
+
+/* ---------- Inspector (izquierda) ---------- */
+/* Columna izquierda: guía de primeros pasos y, debajo, el inspector */
+.left-stack {
+  position: absolute;
+  top: 60px;
+  left: 12px;
+  width: 290px;
+  max-height: calc(var(--vh) - 170px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none !important;
+}
+
+.left-stack > * {
+  pointer-events: auto;
+}
+
+.inspector {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: rise-in 0.14s ease-out;
+}
+
+/* ---------- Primeros pasos ---------- */
+.tutorial {
+  flex-shrink: 0;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 2px solid var(--ui-gold);
+  animation: rise-in 0.14s ease-out;
+}
+
+.tutorial.is-advanced {
+  animation: tutorial-step 0.9s ease-out;
+}
+
+@keyframes tutorial-step {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-gold) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+.tutorial-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-right: -6px;
+}
+
+.tutorial-head .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+
+.tutorial-steps {
+  display: flex;
+  gap: 3px;
+}
+
+.tutorial-steps > span {
+  flex: 1;
+  height: 2px;
+  background: var(--ui-surface-0);
+}
+
+.tutorial-steps > .is-done {
+  background: var(--ui-gold);
+}
+
+.tutorial-steps > .is-current {
+  background: var(--ui-text-muted);
+}
+
+.tutorial-title {
+  margin: 0;
+  font: 600 14px/1.3 var(--font-display);
+  text-wrap: balance;
+}
+
+.tutorial-hint {
+  margin: 0;
+  color: var(--ui-text-secondary);
+  font-size: 12.5px;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Botón del dock que señala la guía */
+.dock-btn.is-hint {
+  box-shadow: inset 0 0 0 1px var(--ui-gold);
+  color: var(--ui-text);
+  animation: hint-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes hint-pulse {
+  50% {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-gold) 35%, transparent);
+  }
+}
+
+.inspector .panel-body {
+  overflow-y: auto;
+  gap: var(--space-3);
+}
+
+.inspector-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coord {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Dock de construcción (abajo) ---------- */
+.dock {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(var(--vw) - 24px);
+  pointer-events: none !important;
+}
+
+.dock > * {
+  pointer-events: auto;
+}
+
+.dock-bar {
+  display: flex;
+  padding: 4px;
+  gap: 2px;
+}
+
+.dock-btn {
+  min-width: 62px;
+  padding: 0 8px;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ui-text-secondary);
+  font-size: 10.5px;
+  font-weight: 500;
+  position: relative;
+  transition: background 0.12s, color 0.12s;
+}
+
+.dock-btn:hover {
+  background: var(--ui-surface-3);
+  color: var(--ui-text);
+}
+
+.dock-btn.is-open {
+  background: var(--ui-surface-3);
+  color: var(--ui-text);
+}
+
+.dock-btn.is-active {
+  color: var(--ui-text);
+}
+
+.dock-btn.is-active::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 3px;
+  height: 2px;
+  background: var(--ui-gold);
+}
+
+.dock-sep {
+  width: 1px;
+  margin: 8px 3px;
+  background: var(--ui-line);
+}
+
+/* Deshacer y rehacer: solo icono */
+.dock-btn.is-icon {
+  min-width: 40px;
+  padding: 0 6px;
+}
+
+.dock-btn:disabled {
+  color: var(--ui-text-muted);
+  opacity: 0.45;
+  background: transparent;
+  cursor: default;
+}
+
+.flyout {
+  max-width: min(760px, calc(var(--vw) - 24px));
+  animation: rise-in 0.12s ease-out;
+}
+
+.flyout-head {
+  padding: 8px 12px 4px;
+}
+
+.flyout-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 8px 8px;
+}
+
+.flyout-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 8px;
+  border-top: 1px solid var(--ui-line);
+  color: var(--ui-text-secondary);
+}
+
+.flyout-foot .segmented > button {
+  height: 24px;
+  font-size: 12px;
+}
+
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-control);
+  background: var(--ui-surface-1);
+  color: var(--ui-text);
+  text-align: left;
+  position: relative;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--ui-surface-3);
+  border-color: var(--ui-line-strong);
+}
+
+.tool.is-active {
+  background: var(--ui-surface-3);
+  border-color: var(--ui-text-secondary);
+}
+
+.tool.is-active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--ui-gold);
+}
+
+.tool-name {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tool-cost {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tool .icon-wrap {
+  color: var(--ui-text-muted);
+}
+
+.status-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.status-chip:empty {
+  display: none;
+}
+
+.status-chip .sep {
+  width: 1px;
+  height: 12px;
+  background: var(--ui-line-strong);
+}
+
+.status-chip.is-error {
+  color: var(--ui-negative);
+  border-color: color-mix(in srgb, var(--ui-negative) 40%, transparent);
+}
+
+/* En pantallas estrechas el dock se queda en iconos (el nombre sigue en la descripción emergente) */
+@container ui (max-width: 1160px) {
+  .dock-btn {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 6px;
+  }
+  .dock-btn > span:not(.icon-wrap) {
+    display: none;
+  }
+  .dock-btn.is-active::after {
+    left: 10px;
+    right: 10px;
+  }
+}
+
+/* ---------- Vistas de datos (abajo a la derecha) ---------- */
+.views {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+}
+
+.views .icon-wrap {
+  color: var(--ui-text-muted);
+}
+
+.views select {
+  height: 28px;
+  min-width: 170px;
+}
+
+/* Sin sitio junto al dock, las vistas suben por encima de él */
+@container ui (max-width: 1240px) {
+  .views {
+    bottom: 72px;
+  }
+}
+
+/* ---------- Bancarrota ---------- */
+.gameover {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(400px, calc(var(--vw) - 32px));
+  border-top: 2px solid var(--ui-negative);
+}
+
+.gameover .panel-body p {
+  margin: 0 0 var(--space-2);
+  color: var(--ui-text-secondary);
+}
+
+/* Mientras el menú principal está abierto, el HUD desaparece y solo se ve la ciudad */
+body.attract .topbar,
+body.attract .rail,
+body.attract .dock,
+body.attract .views,
+body.attract .inspector,
+body.attract .side-panel,
+body.attract .toasts {
+  display: none !important;
+}
