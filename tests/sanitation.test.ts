@@ -268,6 +268,6 @@ describe('guardado de la fase 14', () => {
     expect(loaded.economy.funding.waste).toBe(100);
     expect(loaded.stats.health.sick).toBe(0);
     expect(Number.isFinite(loaded.stats.workforce)).toBe(true);
-    expect(SAVE_VERSION).toBe(6);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(6);
   });
 });

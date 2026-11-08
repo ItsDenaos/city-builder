@@ -1,6 +1,6 @@
 import { rankFor } from './data/progression';
 import { refreshDerived } from './simulation';
-import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newFunding, newGarbageStats, newHealthStats, newIncidents, newProgress, newTransitStats } from './state';
+import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newDemography, newEducationStats, newFunding, newGarbageStats, newHealthStats, newIncidents, newProgress, newTransitStats } from './state';
 
 /**
  * Súbela si cambia el formato y añade la migración en deserialize.
@@ -9,8 +9,9 @@ import { type BuildingInstance, type GameMap, type GameState, createGame, newAgo
  * v4: financiación por departamento, ordenanzas y distritos con nombre.
  * v5: transporte público (capa de túneles de metro y financiación del transporte).
  * v6: basura y salud (capa de basura, carga de los vertederos y financiación de residuos).
+ * v7: educación y edades (reparto de la población por edades y estudios).
  */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 // Capas del mapa que se guardan; las derivadas (acceso, redes, influencia, tráfico) se recalculan al cargar.
 const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro', 'garbage'] as const;
@@ -109,6 +110,10 @@ export function deserialize(data: unknown): GameState {
   state.stats.health = { ...newHealthStats(), ...state.stats.health };
   state.stats.transit = { ...newTransitStats(), ...state.stats.transit };
   state.sanitation = (rest as Partial<GameState>).sanitation ?? true;
+  // Partidas v1-v6: sin edades ni estudios; se activan con la mezcla de una ciudad nueva
+  state.demographics = (rest as Partial<GameState>).demographics ?? true;
+  state.demography = { ...newDemography(), ...(rest as Partial<GameState>).demography };
+  state.stats.education = { ...newEducationStats(), ...state.stats.education };
   state.nextDistrictId ??= 1;
   state.buildings = new Map(buildings.map((b) => [b.id, { ...b }]));
   const traffic = new Float32Array(savedMap.width * savedMap.height);

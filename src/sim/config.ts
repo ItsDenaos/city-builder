@@ -206,6 +206,28 @@ export const SICK_HAPPINESS = 15;
 /** ...y la que quita además no encontrar cama en una clínica u hospital. */
 export const UNTREATED_HAPPINESS = 20;
 
+// Educación y edades (fase 15). Solo funcionan en partidas con `demographics` (las del menú; no en tests ni balance).
+/** Mezcla de quien llega a vivir a la ciudad: fracción de niños, adultos y mayores. */
+export const ARRIVAL_AGES = { children: 0.25, adults: 0.65, elderly: 0.1 } as const;
+/** Fracción de los adultos que trabaja (con la mezcla de llegada da la misma población activa de siempre, ~0,5). */
+export const PARTICIPATION = 0.77;
+/** Años que se es niño y adulto; nacimientos al año por adulto; mortalidad anual de los mayores con sanidad media. */
+export const CHILD_YEARS = 18;
+export const ADULT_YEARS = 47;
+export const BIRTH_RATE = 0.03;
+export const ELDERLY_MORTALITY = 0.08;
+/** La mortalidad de los mayores va de ×1,5 sin sanidad a ×0,5 con sanidad 100 (cobertura media de los vecinos). */
+export const MORTALITY_HEALTH_EFFECT = 1;
+/** Estudios de los adultos que llegan: con malas escuelas y con las mejores (las familias con estudios eligen ciudad). */
+export const ARRIVAL_EDUCATION_MIN = { basic: 0.4, higher: 0.08 } as const;
+export const ARRIVAL_EDUCATION_MAX = { basic: 0.55, higher: 0.4 } as const;
+/** Fracción de los niños en edad de estudios superiores (instituto y universidad). */
+export const HIGHER_AGE_SHARE = 0.5;
+/** Sueldo relativo de un adulto según sus estudios y pensión de un mayor (multiplican el impuesto residencial). */
+export const WAGE = { none: 0.8, basic: 1, higher: 1.5, elderly: 0.5 } as const;
+/** Felicidad que quita a todas las viviendas que no haya plaza escolar para ningún niño (proporcional a lo que falta). */
+export const SCHOOL_SHORTAGE_HAPPINESS = 8;
+
 export const DAYS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const START_YEAR = 2000;

@@ -1,6 +1,7 @@
 import type { GameState } from './state';
 import { computeRoadAccess } from './systems/access';
 import { advise } from './systems/advisor';
+import { updateDemography } from './systems/demography';
 import { updateAgora } from './systems/agora';
 import { computeStats, updateDemand } from './systems/demand';
 import { settleMonth } from './systems/economy';
@@ -31,6 +32,7 @@ const SYSTEMS: System[] = [
   updateIncidents, // incendios (necesitan la cobertura de bomberos), averías y eventos
   computeStats, // otra vez, para que la UI vea el resultado del día
   settleMonth,
+  updateDemography, // al cerrar el mes: nacimientos, edades y estudios
   recordHistory,
   updateProgress,
   advise,

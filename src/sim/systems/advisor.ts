@@ -3,6 +3,7 @@ import { getBuildingDef } from '../data/buildings';
 import { ZONE_CODE } from '../data/zones';
 import type { GameState } from '../state';
 import type { SimEvent } from '../types';
+import { qualifiedSurplus } from './demography';
 
 const HIGH_UNEMPLOYMENT = 0.25;
 const HIGH_DEMAND = 0.5;
@@ -21,6 +22,7 @@ const GARBAGE_ADVICE_POPULATION = 200;
 const DIRTY_SHARE = 0.1;
 const LANDFILL_WARNING = 0.9;
 const MIN_SICK_ADVICE = 10;
+const AGING_SHARE = 0.22;
 
 /** Una vez al mes revisa la ciudad y emite como mucho dos consejos, por orden de importancia. */
 export function advise(state: GameState, events: SimEvent[]): void {
@@ -95,6 +97,15 @@ export function advise(state: GameState, events: SimEvent[]): void {
       advice.push('Los vertederos están casi llenos: construye otro, un centro de reciclaje o una incineradora.');
     }
     if (h.sick > h.beds && h.sick >= MIN_SICK_ADVICE) advice.push('Hay vecinos enfermos sin cama: construye clínicas u hospitales.');
+  }
+  // Educación y edades (fase 15)
+  if (state.demographics && stats.population >= SERVICE_ADVICE_POPULATION) {
+    const e = stats.education;
+    if (e.children >= 20 && e.basicRate < 0.9) advice.push('Hay niños sin plaza en el colegio: construye escuelas.');
+    if (e.jobsHigher > 0 && qualifiedSurplus(state, 3) <= 0) {
+      advice.push('Faltan trabajadores con estudios superiores para que crezcan comercios e industrias: construye un instituto o una universidad.');
+    }
+    if (state.demography.elderly > AGING_SHARE) advice.push('La población envejece: atrae familias con escuelas y parques, o habrá menos gente que trabaje.');
   }
   // Medias de lo que viven los habitantes (ponderadas por ocupantes de lotes residenciales)
   if (stats.population >= SERVICE_ADVICE_POPULATION) {

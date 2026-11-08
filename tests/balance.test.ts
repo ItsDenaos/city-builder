@@ -11,8 +11,8 @@ import { taxDemandPenalty } from '../src/sim/systems/demand';
  * Juega `years` años con el bot. Cede el hilo cada mes: si no, una simulación tan larga bloquea el proceso
  * de Vitest y este da un error de tiempo («Timeout calling onTaskUpdate») aunque los tests pasen.
  */
-async function play(years: number, opts: BotOptions & { money?: number; sanitation?: boolean } = {}) {
-  const s = createGame({ width: 128, height: 128, flat: true, seed: 3, money: opts.money, sanitation: opts.sanitation });
+async function play(years: number, opts: BotOptions & { money?: number; sanitation?: boolean; demographics?: boolean } = {}) {
+  const s = createGame({ width: 128, height: 128, flat: true, seed: 3, money: opts.money, sanitation: opts.sanitation, demographics: opts.demographics });
   const bot = new Bot(s, opts);
   const yearly: { pop: number; money: number; net: number }[] = [];
   for (let y = 0; y < years && !s.economy.bankrupt; y++) {
@@ -62,6 +62,16 @@ describe('balance', () => {
     expect(san.s.stats.garbage.dirtyShare).toBeLessThan(0.1);
     expect(san.s.stats.health.average).toBeGreaterThan(50);
   }, 120_000);
+
+  it('una partida como las del menú (basura y salud, educación y edades) es jugable y forma a sus vecinos', async () => {
+    const full = await play(8, { sanitation: true, demographics: true });
+    expect(full.s.economy.bankrupt).toBe(false);
+    expect(full.yearly.every((y) => y.money > 0)).toBe(true);
+    expect(full.s.stats.population).toBeGreaterThan(normal.s.stats.population * 0.6);
+    const d = full.s.demography;
+    expect(d.higher / (d.none + d.basic + d.higher)).toBeGreaterThan(0.1);
+    expect(full.s.stats.education.basicRate).toBeGreaterThan(0.9);
+  }, 150_000);
 
   it('subir mucho los impuestos frena el crecimiento', async () => {
     const high = await play(8, { taxes: { R: 14, C: 14, I: 14 } });

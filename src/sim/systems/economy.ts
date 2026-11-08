@@ -12,6 +12,7 @@ import { getBuildingDef } from '../data/buildings';
 import { ROAD_BY_CODE } from '../data/roads';
 import { ZONE_BY_CODE } from '../data/zones';
 import { activeOrdinances, effectTaxIncome } from '../effects';
+import { incomeIndex } from './demography';
 import type { Budget, GameState, Loan } from '../state';
 import type { SimEvent } from '../types';
 
@@ -45,7 +46,8 @@ export function estimateBudget(state: GameState): Budget {
   }
 
   const income = {
-    R: people.R * economy.taxes.R * TAX_PER_CAPITA.R * effectTaxIncome(state, 'R'),
+    // Los sueldos (estudios) y las pensiones (fase 15) cambian lo que paga cada vecino
+    R: people.R * economy.taxes.R * TAX_PER_CAPITA.R * effectTaxIncome(state, 'R') * incomeIndex(state),
     C: people.C * economy.taxes.C * TAX_PER_CAPITA.C * effectTaxIncome(state, 'C'),
     I: people.I * economy.taxes.I * TAX_PER_CAPITA.I * effectTaxIncome(state, 'I'),
   };

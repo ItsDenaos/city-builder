@@ -29,6 +29,7 @@ import { type ServiceType, getBuildingDef } from '../data/buildings';
 import { ZONE_CODE } from '../data/zones';
 import { type GameMap, type GameState, tileIndex } from '../state';
 import { TERRAIN_WATER } from '../types';
+import { schoolShortagePenalty } from './demography';
 import { excessGarbage } from './garbage';
 import { computeHealth, sicknessPenalty } from './health';
 import { roadCapacity } from './traffic';
@@ -175,7 +176,7 @@ export function computeInfluence(state: GameState): void {
     if (c < 0) return cityHasJobs ? NO_JOB_ACCESS_PENALTY : 0;
     return Math.min(COMMUTE_MAX_PENALTY, Math.max(0, c - COMMUTE_OK) * COMMUTE_HAPPINESS);
   };
-  const events = effectHappiness(state);
+  const events = effectHappiness(state) - schoolShortagePenalty(state);
   let weighted = 0;
   let residents = 0;
   happiness.fill(0);

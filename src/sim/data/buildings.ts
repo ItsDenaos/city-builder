@@ -25,6 +25,8 @@ export interface BuildingDef {
   garbage?: { collect: number; radius: number; storage?: number };
   /** Camas para vecinos enfermos (fase 14). */
   beds?: number;
+  /** Plazas escolares (fase 15): estudios básicos (escuela) o superiores (instituto y universidad). */
+  seats?: { level: 'basic' | 'higher'; count: number };
   /** Efecto máximo (escala 0-100) en el centro; decrece hasta el radio. */
   effects?: { pollution?: number; landValue?: number; crime?: number; radius: number };
   capacity?: { jobs?: number; residents?: number };
@@ -99,13 +101,20 @@ export const BUILDINGS: readonly BuildingDef[] = [
     id: 'elementary_school', name: 'Escuela', short: 'E', category: 'services',
     size: { w: 3, h: 2 }, cost: 5_000, upkeep: 150,
     coverage: { service: 'education', radius: 14 }, power: { consumes: 4 }, water: { consumes: 3 },
-    capacity: { jobs: 25 }, unlockAtPopulation: 0, color: '#A8744E',
+    capacity: { jobs: 25 }, seats: { level: 'basic', count: 300 }, unlockAtPopulation: 0, color: '#A8744E',
   },
   {
     id: 'high_school', name: 'Instituto', short: 'I', category: 'services',
     size: { w: 3, h: 3 }, cost: 10_000, upkeep: 300,
     coverage: { service: 'education', radius: 22 }, power: { consumes: 8 }, water: { consumes: 6 },
-    capacity: { jobs: 45 }, unlockAtPopulation: 2_000, color: '#8F6141',
+    capacity: { jobs: 45 }, seats: { level: 'higher', count: 400 }, unlockAtPopulation: 2_000, color: '#8F6141',
+  },
+  {
+    id: 'university', name: 'Universidad', short: 'U', category: 'services',
+    size: { w: 4, h: 4 }, cost: 30_000, upkeep: 700,
+    coverage: { service: 'education', radius: 30 }, power: { consumes: 15 }, water: { consumes: 10 },
+    effects: { landValue: 12, radius: 10 },
+    capacity: { jobs: 120 }, seats: { level: 'higher', count: 1_500 }, unlockAtPopulation: 8_000, color: '#7D5A3C',
   },
   // Parques
   {

@@ -149,6 +149,7 @@ const menu = new Menu({
         incidents: s.incidents,
         elections: s.elections && !s.sandbox,
         sanitation: true,
+        demographics: true,
       }),
     ),
   startScenario: (id) => setState(createScenario(id)),

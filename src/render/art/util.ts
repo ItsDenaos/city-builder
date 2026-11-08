@@ -58,14 +58,19 @@ export function pick<T>(items: readonly T[], r: number): T {
 
 const shadeCache = new Map<string, string>();
 
-/** Aclara (f > 1) u oscurece (f < 1) un color #rrggbb. */
-export function shade(hex: string, f: number): string {
-  const key = `${hex}:${f}`;
+/**
+ * Aclara (f > 1) u oscurece (f < 1) un color #rrggbb o rgb(r, g, b). Acepta su propia salida, así se puede
+ * sombrear un color ya sombreado (un tejado oscurecido y su maquinaria, por ejemplo).
+ */
+export function shade(color: string, f: number): string {
+  const key = `${color}:${f}`;
   let out = shadeCache.get(key);
   if (!out) {
-    const n = parseInt(hex.slice(1), 16);
-    const c = (shift: number) => Math.max(0, Math.min(255, Math.round(((n >> shift) & 255) * f)));
-    out = `rgb(${c(16)}, ${c(8)}, ${c(0)})`;
+    const rgb = color.startsWith('#')
+      ? [16, 8, 0].map((shift) => (parseInt(color.slice(1), 16) >> shift) & 255)
+      : (color.match(/\d+/g) ?? ['0', '0', '0']).slice(0, 3).map(Number);
+    const [r, g, b] = rgb.map((v) => Math.max(0, Math.min(255, Math.round(v * f))));
+    out = `rgb(${r}, ${g}, ${b})`;
     shadeCache.set(key, out);
   }
   return out;

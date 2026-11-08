@@ -1,9 +1,10 @@
-import { BUS_ROAD_LOAD, CONGESTION_COST, SHOPPING_TRIPS_PER_RESIDENT, TRAFFIC_SMOOTHING, WORKFORCE_RATIO } from '../config';
+import { BUS_ROAD_LOAD, CONGESTION_COST, SHOPPING_TRIPS_PER_RESIDENT, TRAFFIC_SMOOTHING } from '../config';
 import { getBuildingDef } from '../data/buildings';
 import { ROAD_BY_CODE } from '../data/roads';
 import { ZONE_CODE } from '../data/zones';
 import { type GameMap, type GameState, TRANSIT_MODE_CODE, tileIndex } from '../state';
 import { accumulate, shortestTree } from './paths';
+import { workforceRatio } from './demography';
 import { planTransit, transitShareFor } from './transit';
 
 /** Capacidad (viajes/día) de una casilla de carretera; 0 si no hay carretera. */
@@ -79,10 +80,11 @@ export function computeTraffic(state: GameState): void {
   let weighted = 0;
   let residents = 0;
   let workforce = 0;
+  const ratio = workforceRatio(state);
   for (let i = 0; i < size; i++) {
     const e = entry[i];
     if (e < 0 || map.zoneType[i] !== ZONE_CODE.R || !map.lotLevel[i]) continue;
-    const workers = map.lotOccupants[i] * WORKFORCE_RATIO;
+    const workers = map.lotOccupants[i] * ratio;
     const d = toWork.dist[e];
     const car = Number.isFinite(d) ? d + layers.roadAccess[i] : Infinity;
     const byTransit = transit.cost[i];

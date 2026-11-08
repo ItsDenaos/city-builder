@@ -44,6 +44,15 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     description: 'Ni un lote con basura acumulada con 5.000 habitantes.',
     check: (s) => s.sanitation && pop(s) >= 5_000 && s.stats.garbage.dirtyShare === 0,
   },
+  {
+    id: 'ciudad-universitaria',
+    name: 'Ciudad universitaria',
+    description: 'El 30 % de los adultos con estudios superiores y 5.000 habitantes.',
+    check: (s) => {
+      const adults = s.demography.none + s.demography.basic + s.demography.higher;
+      return s.demographics && pop(s) >= 5_000 && adults > 0 && s.demography.higher / adults >= 0.3;
+    },
+  },
   { id: 'trafico-fluido', name: 'Tráfico fluido', description: 'Menos del 2 % de vías saturadas con 10.000 habitantes.', check: (s) => pop(s) >= 10_000 && s.stats.traffic.congestedShare < 0.02 },
   { id: 'aire-puro', name: 'Aire puro', description: 'Contaminación media en las viviendas por debajo de 5 con 5.000 habitantes.', check: (s) => pop(s) >= 5_000 && residentAverages(s).pollution < 5 },
   { id: 'ciudad-segura', name: 'Ciudad segura', description: 'Crimen medio en las viviendas por debajo de 10 con 5.000 habitantes.', check: (s) => pop(s) >= 5_000 && residentAverages(s).crime < 10 },

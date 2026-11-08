@@ -15,7 +15,7 @@ City builder para navegador al estilo SimCity / Cities: Skylines, con simulació
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (?seed=123 cambia el mapa de la demostración)
-npm test           # 214 tests en ~2 min, incluidos los objetivos de balance
+npm test           # 233 tests en ~2,5 min, incluidos los objetivos de balance
 npm run typecheck  # tsc --noEmit
 npm run build      # tipos + build de producción en dist/
 npm run balance    # informe largo con el jugador automático (balance/, hasta 10 min)
@@ -50,7 +50,7 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 - **Determinismo**: todo lo aleatorio usa `random(state)` (generador guardado en el estado). El Ágora usa su propio generador (`random(state.agora)`) para que lo que digan los vecinos no altere la simulación. Una partida cargada debe seguir exactamente igual que la original (hay un test de esto).
 - **Capas persistentes y derivadas**: las persistentes están en `MAP_LAYERS` (save.ts) y en `LAYERS` (undo.ts). Las derivadas (acceso, redes, cobertura, contaminación, felicidad...) se recalculan y no se guardan, salvo el tráfico, que se guarda porque se suaviza día a día.
 - **Al añadir una capa persistente o un campo al estado**: subir `SAVE_VERSION`, migrar en `deserialize` (las capas que falten se quedan a cero; los objetos nuevos se completan con su `new...()`), añadirla a `LAYERS` en undo.ts si la tocan los comandos, y probar el guardado.
-- **Los valores por defecto de `createGame` no tienen sorpresas**: `incidents: 0`, `elections: false`, `sanitation: false`, sin parcelas ni guía. Así los tests y el balance no cambian al añadir sistemas. El menú (y los escenarios) eligen otros valores para el jugador; las partidas antiguas se cargan con basura y salud activadas.
+- **Los valores por defecto de `createGame` no tienen sorpresas**: `incidents: 0`, `elections: false`, `sanitation: false`, `demographics: false`, sin parcelas ni guía. Así los tests y el balance no cambian al añadir sistemas. El menú (y los escenarios) eligen otros valores para el jugador; las partidas antiguas se cargan con basura y salud, y educación y edades, activadas.
 - **Números de balance** en `src/sim/config.ts` y en los catálogos de `data/`. Si un cambio rompe `tests/balance.test.ts`, mirar el informe con `npm run balance` antes de tocar los umbrales.
 - **El jugador automático** elige siempre la opción por defecto de los eventos (la última, que es gratis) y no atiende peticiones: sirve para comprobar que el juego sigue siendo jugable aunque uno no reaccione.
 
@@ -87,14 +87,13 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 **Hecho**:
 - fases 0 a 10 (simulación, redes, economía, influencia, tráfico, menús, balance y arte);
 - la identidad AKROPOLIS;
-- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos), 16 (transporte público) y 14 (basura y salud), detalladas en el README.
+- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos), 16 (transporte público), 14 (basura y salud) y 15 (educación y edades), detalladas en el README.
 
 **Pendiente, en el orden recomendado**:
-1. **Fase 15**: niveles de educación y edades de la población.
-2. **Fase 19**: monumentos y turismo.
-3. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
-4. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
-5. **Resto de la fase 2**: carreteras curvas.
+1. **Fase 19**: monumentos y turismo. La estación de tren (fase 16) ya trae demanda regional: puede traer turistas.
+2. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
+3. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
+4. **Resto de la fase 2**: carreteras curvas.
 
 Cada fase nueva debe:
 - llevar tests propios;
@@ -112,6 +111,7 @@ Cada fase nueva debe:
 - **Departamento**: uno por `ServiceType` con cobertura (`data/departments.ts`). Su financiación (`economy.funding`, 50-150 %) escala el mantenimiento en `estimateBudget` y la cobertura en `computeInfluence`.
 - **Transporte público** (`systems/transit.ts`): cada red es un Dijkstra (`systems/paths.ts`) desde las paradas que tienen empleo a pie; el autobús va por las calles, el metro por la capa `metro` (túneles) y el tren en línea recta entre estaciones. `computeTraffic` reparte los trabajadores de cada vivienda entre coche y transporte con `transitShareFor`. Bajarse en la misma parada no cuenta como viaje, y las estaciones no tienen plantilla (si la tuvieran serían el empleo más cercano de su barrio). Un modo nuevo: añadir `TransitMode`, su red en `planTransit` y su espera en `TRANSIT_WAIT`.
 - **Basura y salud** (`systems/garbage.ts`, `systems/health.ts`): `collectGarbage` va en `SYSTEMS` (no en `refreshDerived`: cambia la capa persistente `garbage` y la carga de los vertederos); la salud la calcula `computeInfluence` antes de la felicidad. Todo se apaga sin `state.sanitation`. Una instalación nueva: entrada en `buildings.ts` con `garbage: { collect, radius, storage? }`; camas nuevas: `beds`.
+- **Educación y edades** (`systems/demography.ts`): la población es un reparto de fracciones (`state.demography`: niños, mayores y adultos por estudios) que `updateDemography` actualiza al cerrar el mes; `computeEducation` (desde `computeStats`) cuenta plazas y empleo cualificado cada día. Para no cambiar nada sin la fase, todo pasa por `workforceRatio`, `incomeIndex`, `qualifiedSurplus` y `schoolShortagePenalty`, que devuelven lo de antes si `demographics` es false. Plazas nuevas: `seats` en `buildings.ts`.
 - **Ajuste del jugador**: añadir una entrada en `SETTING_FIELDS` (ui/settings.ts) y aplicarla en `main.ts`.
 
 ## Continuar en otro PC

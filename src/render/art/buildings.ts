@@ -97,6 +97,15 @@ function placedBoxes(def: BuildingDef): Box[] {
       return [{ dx: 0.1, dy: 0.15, w: 1.9, d: 1.4, h: 0.7, wall: CIVIC.schoolWall, roof: CIVIC.schoolRoof, kind: 'flat', label: def.short }];
     case 'high_school':
       return [{ dx: 0.15, dy: 0.2, w: 2.7, d: 2.0, h: 1.0, wall: CIVIC.schoolWall, roof: shade(CIVIC.schoolRoof, 0.9), kind: 'flat', label: def.short }];
+    case 'university':
+      // Claustro: patio central de mármol rodeado por cuatro alas y un aulario más alto al norte
+      return [
+        { dx: 0.2, dy: 0.2, w: 3.6, d: 3.6, h: 0, wall: CIVIC.plaza, roof: CIVIC.plaza, kind: 'paving' },
+        { dx: 0.3, dy: 0.25, w: 3.4, d: 0.9, h: 1.4, wall: CIVIC.schoolWall, roof: shade(CIVIC.schoolRoof, 0.82), kind: 'flat', label: def.short },
+        { dx: 0.3, dy: 1.15, w: 0.8, d: 2.1, h: 0.9, wall: CIVIC.schoolWall, roof: CIVIC.schoolRoof, kind: 'flat' },
+        { dx: 2.9, dy: 1.15, w: 0.8, d: 2.1, h: 0.9, wall: CIVIC.schoolWall, roof: CIVIC.schoolRoof, kind: 'flat' },
+        { dx: 0.3, dy: 3.0, w: 3.4, d: 0.7, h: 0.8, wall: CIVIC.schoolWall, roof: CIVIC.schoolRoof, kind: 'flat' },
+      ];
     case 'plaza':
       return [
         { dx: 0.1, dy: 0.1, w: 1.8, d: 1.8, h: 0, wall: CIVIC.plaza, roof: CIVIC.plaza, kind: 'paving' },

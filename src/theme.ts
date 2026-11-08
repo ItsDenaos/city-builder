@@ -65,6 +65,13 @@ export const DATA = {
   transit: '#D9895B',
   garbage: '#A68A5B',
   wellness: '#8CC7A8',
+  // Edades y estudios (fase 15)
+  children: '#E6C892',
+  adults: '#86B4D8',
+  elderly: '#B9A3C9',
+  eduNone: '#E5806F',
+  eduBasic: '#E8B45A',
+  eduHigher: '#7DC4A0',
 } as const;
 
 export const FONTS = {

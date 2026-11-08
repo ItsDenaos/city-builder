@@ -12,6 +12,7 @@ import { MAX_LOT_LEVEL, ZONE_BY_CODE, getZoneDefByCode } from '../data/zones';
 import { random } from '../rng';
 import type { GameState } from '../state';
 import { hasRoadAccess } from './access';
+import { qualifiedSurplus } from './demography';
 
 /**
  * Un paso diario de crecimiento por cada casilla zonificada:
@@ -19,7 +20,8 @@ import { hasRoadAccess } from './access';
  * - R: entran habitantes si hay demanda, se van si es muy negativa.
  * - C/I: contratan desempleados hasta llenarse; despiden si faltan trabajadores.
  * - Lote lleno con demanda → puede subir de nivel (más capacidad) si el valor del suelo lo permite
- *   (R y C) o si hay educación suficiente (I).
+ *   (R y C) o si hay educación suficiente (I); con edades y estudios (fase 15), C e I necesitan además
+ *   trabajadores con estudios libres para los puestos del nivel nuevo.
  * - R: con felicidad por debajo de UNHAPPY_MOVE_OUT los vecinos se van aunque haya demanda.
  * - Sin acceso vial o sin electricidad se vacía y, al quedar vacío, el edificio desaparece.
  * - Sin agua no pasa del nivel 1: su capacidad se limita a la del nivel 1 y no sube de nivel.
@@ -28,6 +30,9 @@ export function growLots(state: GameState): void {
   const { map, stats } = state;
   const size = map.width * map.height;
   let unemployed = stats.workforce - stats.employed; // negativo = faltan trabajadores
+  // Trabajadores cualificados que ya se han llevado hoy los lotes que suben de nivel
+  let usedBasic = 0;
+  let usedHigher = 0;
   // Empezar en una casilla aleatoria para no favorecer siempre la esquina superior izquierda
   const start = Math.floor(random(state) * size);
 
@@ -72,15 +77,20 @@ export function growLots(state: GameState): void {
     }
 
     const next = level + 1;
+    // Con edades y estudios (fase 15), comercio e industria necesitan trabajadores con estudios para los puestos nuevos
+    const qualified = !state.demographics || type === 'R' || qualifiedSurplus(state, next) - (next >= 3 ? usedHigher : usedBasic) >= caps[next - 1];
     const qualifies =
-      type === 'I'
-        ? state.layers.coverage.education[i] >= INDUSTRY_LEVEL_EDUCATION[next]
-        : state.layers.landValue[i] >= LEVEL_LAND_VALUE[next];
+      qualified &&
+      (type === 'I' ? state.layers.coverage.education[i] >= INDUSTRY_LEVEL_EDUCATION[next] : state.layers.landValue[i] >= LEVEL_LAND_VALUE[next]);
     if (
       access && powered && watered && qualifies && occ === capacity && level < MAX_LOT_LEVEL &&
       demand > LEVEL_UP_MIN_DEMAND && random(state) < LEVEL_UP_CHANCE
     ) {
       map.lotLevel[i] = next;
+      if (type !== 'R') {
+        if (next >= 3) usedHigher += caps[next - 1];
+        else usedBasic += caps[next - 1];
+      }
     }
     map.lotOccupants[i] = occ;
   }

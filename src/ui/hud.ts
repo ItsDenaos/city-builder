@@ -432,6 +432,14 @@ export class Hud {
     const last = state.history.at(-1);
     const delta = last ? st.population - last.population : 0;
     this.population.set(n(st.population), last ? `${signed(delta)} este mes` : 'habitantes');
+    if (state.demographics) {
+      const d = state.demography;
+      const adults = d.none + d.basic + d.higher;
+      const pc = (v: number) => `${Math.round(v * 100)} %`;
+      this.population.describe(
+        `Habitantes: ${pc(d.children)} niños, ${pc(adults)} adultos y ${pc(d.elderly)} mayores. Adultos con estudios superiores: ${pc(adults ? d.higher / adults : 0)}.`,
+      );
+    }
     this.happiness.set(`${Math.round(st.happiness)} %`, 'felicidad', st.population > 0 && st.happiness < 40 ? 'warning' : undefined);
     const ag = state.agora;
     const appr = Math.round(ag.approval);

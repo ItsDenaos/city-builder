@@ -19,6 +19,12 @@ interface Chart {
 }
 
 const pct = (v: number) => `${Math.round(v)} %`;
+/** Fracción de los adultos con unos estudios, en %. */
+const share = (s: StatsSample, k: 'none' | 'basic' | 'higher') => {
+  const e = s.education;
+  const adults = e ? e.none + e.basic + e.higher : 0;
+  return e && adults ? (e[k] / adults) * 100 : 0;
+};
 
 const CHARTS: Chart[] = [
   { id: 'population', label: 'Población', zero: true, format: (v) => Math.round(v).toLocaleString('es-ES'), series: [{ label: 'Habitantes', color: DATA.population, value: (s) => s.population }] },
@@ -53,6 +59,29 @@ const CHARTS: Chart[] = [
     zero: true,
     format: pct,
     series: [{ label: 'Trayectos en transporte público', color: DATA.transit, value: (s) => (s.transitShare ?? 0) * 100 }],
+  },
+  {
+    id: 'ages',
+    label: 'Edades',
+    zero: true,
+    format: pct,
+    series: [
+      { label: 'Niños', color: DATA.children, value: (s) => (s.ages?.children ?? 0) * 100 },
+      { label: 'Adultos', color: DATA.adults, value: (s) => (s.ages?.adults ?? 0) * 100 },
+      { label: 'Mayores', color: DATA.elderly, value: (s) => (s.ages?.elderly ?? 0) * 100 },
+    ],
+  },
+  {
+    id: 'education',
+    label: 'Estudios',
+    zero: true,
+    format: pct,
+    // En porcentaje de los adultos
+    series: [
+      { label: 'Sin estudios', color: DATA.eduNone, value: (s) => share(s, 'none') },
+      { label: 'Básicos', color: DATA.eduBasic, value: (s) => share(s, 'basic') },
+      { label: 'Superiores', color: DATA.eduHigher, value: (s) => share(s, 'higher') },
+    ],
   },
   {
     id: 'health',

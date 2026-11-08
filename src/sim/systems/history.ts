@@ -1,12 +1,12 @@
 import { STATS_HISTORY_MONTHS } from '../config';
-import type { GameState } from '../state';
+import { type GameState, adultsOf } from '../state';
 import type { SimEvent } from '../types';
 
 /** Guarda una muestra de las estadísticas al cerrar cada mes (después del presupuesto). */
 export function recordHistory(state: GameState, events: SimEvent[]): void {
   const month = events.find((e) => e.type === 'newMonth');
   if (!month || month.type !== 'newMonth') return;
-  const { stats, economy } = state;
+  const { stats, economy, demography: d } = state;
   state.history.push({
     month: month.month,
     year: month.year,
@@ -21,6 +21,8 @@ export function recordHistory(state: GameState, events: SimEvent[]): void {
     transitShare: stats.transit.share,
     health: stats.health.average,
     garbage: stats.garbage.dirtyShare,
+    ages: { children: d.children, adults: adultsOf(d), elderly: d.elderly },
+    education: { none: d.none, basic: d.basic, higher: d.higher },
   });
   if (state.history.length > STATS_HISTORY_MONTHS) state.history.shift();
 }

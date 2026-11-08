@@ -7,6 +7,7 @@ import { tick } from './simulation';
 import { estimateBudget } from './systems/economy';
 import { type GameState, NO_BUILDING, isUnlocked, tileIndex } from './state';
 import { hasRoadAccess } from './systems/access';
+import { qualifiedSurplus } from './systems/demography';
 import type { Density, SimEvent, ZoneType } from './types';
 
 /**
@@ -204,7 +205,10 @@ export class AutoPlayer {
     this.ensurePower();
     this.ensureWater();
     this.ensureGarbage();
-    if (this.opts.services !== false) this.ensureServices();
+    if (this.opts.services !== false) {
+      this.ensureSchools();
+      this.ensureServices();
+    }
     for (const z of ['R', 'C', 'I'] as const) this.ensureZone(z);
   }
 
@@ -289,6 +293,28 @@ export class AutoPlayer {
     if (!b) return;
     this.claim(b);
     this.cmd({ type: 'placeBuilding', defId: id, at: this.inner(b) }, getBuildingDef(id)!.name.toLowerCase());
+  }
+
+  /**
+   * Plazas escolares (solo en partidas con educación y edades): escuelas para todos los niños e institutos
+   * (o una universidad) cuando faltan trabajadores con estudios superiores para el comercio y la industria.
+   */
+  private ensureSchools(): void {
+    const s = this.s;
+    if (!s.demographics) return;
+    const e = s.stats.education;
+    const build = (defId: string, label: string) => {
+      const def = getBuildingDef(defId)!;
+      if (!isUnlocked(s, def.unlockAtPopulation) || !this.canSpend(def.cost + 1_000) || !this.canAffordUpkeep(def.upkeep)) return false;
+      const b = this.pickBlock('school');
+      if (!b) return false;
+      this.claim(b);
+      return this.cmd({ type: 'placeBuilding', defId, at: this.inner(b) }, label);
+    };
+    if (e.children > 0 && e.basicRate < 0.95 && build('elementary_school', 'escuela')) return;
+    if (s.stats.population >= 2_000 && e.higherRate < 0.6 && qualifiedSurplus(s, 3) < 100) {
+      if (!build('university', 'universidad')) build('high_school', 'instituto');
+    }
   }
 
   private ensureServices(): void {

@@ -1,4 +1,14 @@
-import { DEFAULT_MAP_SIZE, ELECTION_YEARS, FUNDING_DEFAULT, HEALTH_BASE, START_MONEY, START_YEAR, TAX_DEFAULT } from './config';
+import {
+  ARRIVAL_AGES,
+  ARRIVAL_EDUCATION_MIN,
+  DEFAULT_MAP_SIZE,
+  ELECTION_YEARS,
+  FUNDING_DEFAULT,
+  HEALTH_BASE,
+  START_MONEY,
+  START_YEAR,
+  TAX_DEFAULT,
+} from './config';
 import { generateTerrain } from './mapgen';
 import type { ServiceType } from './data/buildings';
 import type { Funding } from './data/departments';
@@ -126,6 +136,61 @@ export interface CityStats {
   transit: TransitStats;
   garbage: GarbageStats;
   health: HealthStats;
+  education: EducationStats;
+}
+
+/**
+ * Plazas escolares y empleo cualificado (fase 15). Los puestos de los lotes de nivel 2 (y los de servicios)
+ * piden estudios básicos; los de nivel 3, superiores. Un trabajador con estudios superiores vale para todo.
+ */
+export interface EducationStats {
+  /** Niños de la ciudad y plazas escolares en servicio. */
+  children: number;
+  seatsBasic: number;
+  seatsHigher: number;
+  /** Fracción de los niños con plaza (estudios básicos) y con plaza de estudios superiores. */
+  basicRate: number;
+  higherRate: number;
+  /** Puestos que piden estudios y trabajadores que los tienen. */
+  jobsBasic: number;
+  jobsHigher: number;
+  workersBasic: number;
+  workersHigher: number;
+}
+
+export const newEducationStats = (): EducationStats => ({
+  children: 0,
+  seatsBasic: 0,
+  seatsHigher: 0,
+  basicRate: 1,
+  higherRate: 1,
+  jobsBasic: 0,
+  jobsHigher: 0,
+  workersBasic: 0,
+  workersHigher: 0,
+});
+
+/**
+ * Edades y estudios de la población (fase 15), en fracciones que suman 1. Los adultos se reparten por estudios:
+ * adultos = none + basic + higher.
+ */
+export interface Demography {
+  children: number;
+  elderly: number;
+  none: number;
+  basic: number;
+  higher: number;
+  /** Población al cierre del mes anterior, para mezclar a los recién llegados. */
+  lastPopulation: number;
+}
+
+export const adultsOf = (d: Demography) => d.none + d.basic + d.higher;
+
+/** La mezcla de llegada, con los estudios de una ciudad sin escuelas. */
+export function newDemography(): Demography {
+  const { children, adults, elderly } = ARRIVAL_AGES;
+  const { basic, higher } = ARRIVAL_EDUCATION_MIN;
+  return { children, elderly, none: adults * (1 - basic - higher), basic: adults * basic, higher: adults * higher, lastPopulation: 0 };
 }
 
 /** Basura (fase 14), en unidades al día. */
@@ -236,6 +301,9 @@ export interface StatsSample {
   /** Salud media y fracción de lotes con basura acumulada (no existen antes de la fase 14). */
   health?: number;
   garbage?: number;
+  /** Edades y estudios (fracciones de la población; no existen antes de la fase 15). */
+  ages?: { children: number; adults: number; elderly: number };
+  education?: { none: number; basic: number; higher: number };
 }
 
 export interface Progress {
@@ -389,6 +457,9 @@ export interface GameState {
   sandbox: boolean;
   /** Basura y salud (fase 14): la basura se acumula y los vecinos enferman. Lo activa el menú, no los tests. */
   sanitation: boolean;
+  /** Educación y edades (fase 15): edades, estudios y empleo cualificado. Lo activa el menú, no los tests. */
+  demographics: boolean;
+  demography: Demography;
   /** Primeros pasos en curso (null = sin guía). */
   tutorial: TutorialState | null;
   incidents: Incidents;
@@ -424,6 +495,8 @@ export interface NewGameOptions {
   elections?: boolean;
   /** Basura y salud (de serie no: los tests y el balance no tienen sorpresas). */
   sanitation?: boolean;
+  /** Educación y edades (de serie no, por lo mismo). */
+  demographics?: boolean;
 }
 
 export const newFunding = (): Funding => ({
@@ -516,12 +589,15 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       transit: newTransitStats(),
       garbage: newGarbageStats(),
       health: newHealthStats(),
+      education: newEducationStats(),
     },
     progress: newProgress(),
     land: null,
     scenario: null,
     sandbox: !!opts.sandbox,
     sanitation: !!opts.sanitation,
+    demographics: !!opts.demographics,
+    demography: newDemography(),
     tutorial: opts.tutorial ? { step: 0 } : null,
     incidents: newIncidents(opts.incidents ?? 0),
     agora: newAgora(seed, !!opts.elections && !opts.sandbox),

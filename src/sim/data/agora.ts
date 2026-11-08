@@ -1,6 +1,7 @@
 import { COMMUTE_OK } from '../config';
 import { mulberry32 } from '../rng';
 import type { GameState } from '../state';
+import { qualifiedSurplus } from '../systems/demography';
 import { ROAD_BY_CODE } from './roads';
 import { ZONE_CODE, getZoneDefByCode } from './zones';
 
@@ -216,6 +217,12 @@ export const TOPICS: readonly TopicDef[] = [
     petition: { title: (b) => `Una escuela en ${b}`, months: 6, goal: (s, i) => atLeast('Cobertura educativa', L(s).coverage.education[i], 50) },
   },
   {
+    id: 'sin-plaza', tone: 'queja', speaker: 'vecino',
+    detect: (s) => s.demographics && s.stats.education.basicRate < 0.9 && s.stats.population >= 500,
+    lines: ['Mi hijo no tiene plaza en el colegio.', 'Las clases están a reventar.', 'Llevamos un año en lista de espera para el colegio.'],
+    petition: { title: () => 'Plazas escolares para todos los niños', months: 6, goal: (s) => atLeast('Niños con plaza (%)', s.stats.education.basicRate * 100, 95) },
+  },
+  {
     id: 'sin-parque', tone: 'queja', speaker: 'vecino',
     detect: (s, i) => L(s).coverage.park[i] < 10 && s.stats.population >= 300,
     lines: ['Ni un parque para los niños.', 'Todo asfalto: ni un árbol en el barrio.'],
@@ -242,6 +249,11 @@ export const TOPICS: readonly TopicDef[] = [
     lines: ['Voy al trabajo en metro y llego en un momento.', 'El autobús me deja en la puerta del trabajo.', 'Desde que hay transporte, el coche se queda en el garaje.'],
   },
   {
+    id: 'universidad', tone: 'elogio', speaker: 'vecino',
+    detect: (s, i) => s.demographics && L(s).happiness[i] >= 60 && s.stats.education.higherRate >= 0.8 && L(s).coverage.education[i] >= 60,
+    lines: ['Mi hija estudia en la universidad de la ciudad.', 'Aquí los chavales pueden estudiar sin irse fuera.'],
+  },
+  {
     id: 'feliz', tone: 'elogio', speaker: 'vecino',
     detect: (s, i) => L(s).happiness[i] >= 70,
     lines: ['Me encanta vivir aquí.', 'Esta ciudad va a mejor.', 'No cambiaría mi barrio por nada.'],
@@ -265,6 +277,11 @@ export const TOPICS: readonly TopicDef[] = [
     id: 'basura-negocio', tone: 'queja', speaker: 'negocio',
     detect: (s, i) => s.sanitation && s.map.garbage[i] >= 50,
     lines: ['Los clientes no entran con este olor.', 'Se nos amontonan las bolsas en la puerta.'],
+  },
+  {
+    id: 'sin-cualificados', tone: 'queja', speaker: 'negocio',
+    detect: (s, i) => s.demographics && s.map.lotLevel[i] >= 2 && s.stats.education.jobsHigher > 0 && qualifiedSurplus(s, 3) <= 0,
+    lines: ['No encontramos personal con estudios.', 'Necesitamos ingenieros y no hay ni uno en la ciudad.'],
   },
   {
     id: 'camiones', tone: 'queja', speaker: 'negocio',

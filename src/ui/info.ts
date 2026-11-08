@@ -138,6 +138,12 @@ export function describeTile(state: GameState, p: Point): TileInfo | null {
         }
       }
       if (def.beds) rows.push({ label: 'Camas', value: n(def.beds * (state.economy.funding.health / 100)) });
+      if (def.seats) {
+        rows.push({
+          label: def.seats.level === 'basic' ? 'Plazas (estudios básicos)' : 'Plazas (estudios superiores)',
+          value: n(def.seats.count * (state.economy.funding.education / 100)),
+        });
+      }
       if (def.capacity?.jobs) rows.push({ label: 'Empleos', value: n(def.capacity.jobs) });
       rows.push({ label: 'Electricidad', ...yesNo(layers.powered[i]) });
     }
