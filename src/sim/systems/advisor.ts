@@ -4,6 +4,7 @@ import { ZONE_CODE } from '../data/zones';
 import type { GameState } from '../state';
 import type { SimEvent } from '../types';
 import { qualifiedSurplus } from './demography';
+import { monumentProblem } from './tourism';
 
 const HIGH_UNEMPLOYMENT = 0.25;
 const HIGH_DEMAND = 0.5;
@@ -23,6 +24,7 @@ const DIRTY_SHARE = 0.1;
 const LANDFILL_WARNING = 0.9;
 const MIN_SICK_ADVICE = 10;
 const AGING_SHARE = 0.22;
+const LOW_TOURISM_QUALITY = 0.6;
 
 /** Una vez al mes revisa la ciudad y emite como mucho dos consejos, por orden de importancia. */
 export function advise(state: GameState, events: SimEvent[]): void {
@@ -106,6 +108,14 @@ export function advise(state: GameState, events: SimEvent[]): void {
       advice.push('Faltan trabajadores con estudios superiores para que crezcan comercios e industrias: construye un instituto o una universidad.');
     }
     if (state.demography.elderly > AGING_SHARE) advice.push('La población envejece: atrae familias con escuelas y parques, o habrá menos gente que trabaje.');
+  }
+  // Monumentos y turismo (fase 19)
+  const monuments = [...state.buildings.values()].filter((b) => getBuildingDef(b.defId)?.monument);
+  if (monuments.some((b) => monumentProblem(state, b))) advice.push('Un monumento no recibe visitas: necesita una calle conectada y electricidad.');
+  else if (stats.tourism.monuments && stats.tourism.quality < LOW_TOURISM_QUALITY) {
+    advice.push('Los turistas evitan una ciudad descontenta o insegura: mejora la felicidad y la seguridad.');
+  } else if (stats.tourism.monuments && !stats.transit.trainStations && stats.population >= 5_000) {
+    advice.push('Una estación de tren traería más turistas, y sin llenar las calles de coches.');
   }
   // Medias de lo que viven los habitantes (ponderadas por ocupantes de lotes residenciales)
   if (stats.population >= SERVICE_ADVICE_POPULATION) {

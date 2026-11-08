@@ -2,6 +2,7 @@ import {
   BASE_INDUSTRIAL_DEMAND,
   BASE_RESIDENTIAL_JOBS,
   COMMERCE_PER_RESIDENT,
+  COMMERCE_PER_TOURIST,
   DEMAND_SCALE,
   DEMAND_SMOOTHING,
   HAPPINESS_BASE,
@@ -73,7 +74,8 @@ export function targetDemand(s: CityStats, taxes: Record<ZoneType, number>): Rec
   const mood = (s.happiness - HAPPINESS_BASE) * HAPPINESS_DEMAND_EFFECT;
   return {
     R: clamp1((jobCapacity + BASE_RESIDENTIAL_JOBS - s.workforce) / Math.max(s.workforce, DEMAND_SCALE) - tax('R') + mood),
-    C: clamp1((s.population * COMMERCE_PER_RESIDENT - s.jobs.C) / Math.max(s.jobs.C, DEMAND_SCALE) - tax('C')),
+    // Los turistas (fase 19) también compran, comen y duermen en la ciudad
+    C: clamp1((s.population * COMMERCE_PER_RESIDENT + s.tourism.visitors * COMMERCE_PER_TOURIST - s.jobs.C) / Math.max(s.jobs.C, DEMAND_SCALE) - tax('C')),
     I: clamp1(
       (BASE_INDUSTRIAL_DEMAND + s.population * INDUSTRY_PER_RESIDENT - s.jobs.I) / Math.max(s.jobs.I, DEMAND_SCALE) - tax('I'),
     ),

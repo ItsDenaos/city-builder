@@ -228,6 +228,24 @@ export const WAGE = { none: 0.8, basic: 1, higher: 1.5, elderly: 0.5 } as const;
 /** Felicidad que quita a todas las viviendas que no haya plaza escolar para ningún niño (proporcional a lo que falta). */
 export const SCHOOL_SHORTAGE_HAPPINESS = 8;
 
+// Monumentos y turismo (fase 19). Sin monumentos no hay turismo: los tests y el balance no cambian.
+/** Visitantes al día por cada punto de atractivo de los monumentos, con calidad 1. */
+export const VISITORS_PER_ATTRACTION = 3;
+/** Calidad de la ciudad para los turistas: depende de la felicidad media y baja con el crimen. */
+export const TOURISM_QUALITY_MIN = 0.2;
+export const TOURISM_QUALITY_MAX = 1.3;
+/** Con una estación de tren en servicio llegan más turistas, y esta fracción lo hace en tren (no usa las calles). */
+export const TRAIN_TOURISM_BOOST = 1.3;
+export const TRAIN_TOURIST_SHARE = 0.4;
+/** Dinero al mes que deja cada visitante diario (con el impuesto comercial neutro; sube y baja con él). */
+export const TOURIST_SPENDING = 2.5;
+/** Empleos comerciales (tiendas, hoteles, restaurantes) que pide cada visitante diario. */
+export const COMMERCE_PER_TOURIST = 0.5;
+/** Viajes en coche al día por visitante que no llega en tren (dos por coche). */
+export const TOURIST_CAR_TRIPS = 0.5;
+/** Felicidad que suma a todas las viviendas cada monumento en servicio (orgullo de ciudad). */
+export const MONUMENT_PRIDE = 1.5;
+
 export const DAYS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const START_YEAR = 2000;

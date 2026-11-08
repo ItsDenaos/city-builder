@@ -1,5 +1,6 @@
 import type { GameState } from '../state';
 import { countBuildings, residentAverages, unemploymentRate } from '../systems/metrics';
+import { MONUMENTS } from './buildings';
 import { RANKS } from './progression';
 
 export interface AchievementDef {
@@ -52,6 +53,13 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
       const adults = s.demography.none + s.demography.basic + s.demography.higher;
       return s.demographics && pop(s) >= 5_000 && adults > 0 && s.demography.higher / adults >= 0.3;
     },
+  },
+  { id: 'destino-turistico', name: 'Destino turístico', description: 'Recibe 1.000 visitantes al día.', check: (s) => s.stats.tourism.visitors >= 1_000 },
+  {
+    id: 'patrimonio',
+    name: 'Patrimonio',
+    description: 'Construye todos los monumentos.',
+    check: (s) => MONUMENTS.every((m) => [...s.buildings.values()].some((b) => b.defId === m.id)),
   },
   { id: 'trafico-fluido', name: 'Tráfico fluido', description: 'Menos del 2 % de vías saturadas con 10.000 habitantes.', check: (s) => pop(s) >= 10_000 && s.stats.traffic.congestedShare < 0.02 },
   { id: 'aire-puro', name: 'Aire puro', description: 'Contaminación media en las viviendas por debajo de 5 con 5.000 habitantes.', check: (s) => pop(s) >= 5_000 && residentAverages(s).pollution < 5 },

@@ -141,6 +141,41 @@ function placedBoxes(def: BuildingDef): Box[] {
         { dx: 2.2, dy: 0.3, w: 0.45, d: 0.45, h: 2.6, wall: M.chimneyWall, roof: M.chimneyRoof, kind: 'chimney' },
         { dx: 0.2, dy: 0.9, w: 2.4, d: 1.9, h: 1.0, wall: CIVIC.incineratorWall, roof: CIVIC.incineratorRoof, kind: 'factory' },
       ];
+    case 'botanical_garden':
+      // Jardín con dos invernaderos de cristal
+      return [
+        { dx: 0.15, dy: 0.15, w: 3.7, d: 3.7, h: 0, wall: CIVIC.gardenGround, roof: CIVIC.gardenGround, kind: 'paving' },
+        { dx: 0.5, dy: 0.55, w: 1.6, d: 1.1, h: 0.55, wall: CIVIC.greenhouse, roof: CIVIC.greenhouse, kind: 'glass' },
+        { dx: 2.3, dy: 2.2, w: 1.2, d: 0.9, h: 0.45, wall: CIVIC.greenhouse, roof: CIVIC.greenhouse, kind: 'glass' },
+      ];
+    case 'museum':
+      // Volumen de mármol con un cuerpo central más alto y lucernario
+      return [
+        { dx: 0.15, dy: 0.25, w: 2.7, d: 2.5, h: 0.8, wall: CIVIC.museumWall, roof: shade(CIVIC.museumWall, 0.95), kind: 'flat' },
+        { dx: 0.8, dy: 0.8, w: 1.4, d: 1.3, h: 1.5, wall: CIVIC.museumWall, roof: CIVIC.museumRoof, kind: 'glass', label: def.short },
+      ];
+    case 'theater':
+      // Patio de butacas delante y caja escénica alta detrás
+      return [
+        { dx: 0.2, dy: 0.15, w: 2.6, d: 1.0, h: 1.7, wall: CIVIC.theaterWall, roof: CIVIC.theaterRoof, kind: 'flat', label: def.short },
+        { dx: 0.35, dy: 1.15, w: 2.3, d: 1.6, h: 0.9, wall: CIVIC.theaterWall, roof: shade(CIVIC.theaterRoof, 1.15), kind: 'flat' },
+      ];
+    case 'stadium':
+      // Césped rodeado por cuatro gradas
+      return [
+        { dx: 0.15, dy: 0.15, w: 3.7, d: 3.7, h: 0, wall: CIVIC.stadiumField, roof: CIVIC.stadiumField, kind: 'paving' },
+        { dx: 0.15, dy: 0.15, w: 3.7, d: 0.7, h: 0.9, wall: CIVIC.stadiumStand, roof: CIVIC.stadiumRoof },
+        { dx: 0.15, dy: 0.85, w: 0.7, d: 2.3, h: 0.7, wall: CIVIC.stadiumStand, roof: CIVIC.stadiumRoof },
+        { dx: 3.15, dy: 0.85, w: 0.7, d: 2.3, h: 0.7, wall: CIVIC.stadiumStand, roof: CIVIC.stadiumRoof },
+        { dx: 0.15, dy: 3.15, w: 3.7, d: 0.7, h: 0.7, wall: CIVIC.stadiumStand, roof: CIVIC.stadiumRoof },
+      ];
+    case 'observation_tower':
+      // Fuste esbelto con remate dorado: el hito más alto del horizonte
+      return [
+        { dx: 0.2, dy: 0.9, w: 1.6, d: 0.9, h: 0.5, wall: CIVIC.towerShaft, roof: shade(CIVIC.towerShaft, 0.92), kind: 'flat' },
+        { dx: 0.7, dy: 0.45, w: 0.6, d: 0.6, h: 4.2, wall: CIVIC.towerShaft, roof: shade(CIVIC.towerShaft, 0.9), kind: 'glass' },
+        { dx: 0.5, dy: 0.25, w: 1.0, d: 1.0, h: 0.5, lift: 4.2, wall: CIVIC.towerShaft, roof: CIVIC.towerShaft, kind: 'crown' },
+      ];
     case 'park_small':
     case 'wind_turbine':
       return [];
@@ -153,6 +188,9 @@ function placedBoxes(def: BuildingDef): Box[] {
 function placedTrees(def: BuildingDef): [number, number, number][] {
   if (def.id === 'park_small') return [[0.3, 0.35, 0.22], [0.7, 0.55, 0.2], [0.35, 0.75, 0.16]];
   if (def.id === 'plaza') return [[0.35, 0.35, 0.2], [1.65, 0.35, 0.2], [0.35, 1.65, 0.2], [1.65, 1.65, 0.2]];
+  if (def.id === 'botanical_garden') {
+    return [[2.6, 0.6, 0.3], [3.3, 1.1, 0.24], [0.6, 2.4, 0.3], [1.3, 3.1, 0.26], [0.5, 3.3, 0.2], [3.3, 3.3, 0.22], [1.9, 1.9, 0.2]];
+  }
   return [];
 }
 

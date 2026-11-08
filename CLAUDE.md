@@ -15,13 +15,13 @@ City builder para navegador al estilo SimCity / Cities: Skylines, con simulació
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (?seed=123 cambia el mapa de la demostración)
-npm test           # 233 tests en ~2,5 min, incluidos los objetivos de balance
+npm test           # 247 tests en ~3 min, incluidos los objetivos de balance
 npm run typecheck  # tsc --noEmit
 npm run build      # tipos + build de producción en dist/
 npm run balance    # informe largo con el jugador automático (balance/, hasta 10 min)
 ```
 
-`.claude/launch.json` tiene la configuración `dev` para el panel de vista previa.
+`.claude/launch.json` tiene la configuración `dev` para el panel de vista previa y `prueba` (`vite preview` de `dist/` en el puerto 4173): una versión compilada que el usuario puede probar sin que se recargue con cada edición; se actualiza con `npm run build`.
 
 ## Arquitectura
 
@@ -87,13 +87,12 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 **Hecho**:
 - fases 0 a 10 (simulación, redes, economía, influencia, tráfico, menús, balance y arte);
 - la identidad AKROPOLIS;
-- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos), 16 (transporte público), 14 (basura y salud) y 15 (educación y edades), detalladas en el README.
+- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos), 16 (transporte público), 14 (basura y salud), 15 (educación y edades) y 19 (monumentos y turismo), detalladas en el README.
 
 **Pendiente, en el orden recomendado**:
-1. **Fase 19**: monumentos y turismo. La estación de tren (fase 16) ya trae demanda regional: puede traer turistas.
-2. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
-3. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
-4. **Resto de la fase 2**: carreteras curvas.
+1. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
+2. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
+3. **Resto de la fase 2**: carreteras curvas.
 
 Cada fase nueva debe:
 - llevar tests propios;
@@ -112,6 +111,7 @@ Cada fase nueva debe:
 - **Transporte público** (`systems/transit.ts`): cada red es un Dijkstra (`systems/paths.ts`) desde las paradas que tienen empleo a pie; el autobús va por las calles, el metro por la capa `metro` (túneles) y el tren en línea recta entre estaciones. `computeTraffic` reparte los trabajadores de cada vivienda entre coche y transporte con `transitShareFor`. Bajarse en la misma parada no cuenta como viaje, y las estaciones no tienen plantilla (si la tuvieran serían el empleo más cercano de su barrio). Un modo nuevo: añadir `TransitMode`, su red en `planTransit` y su espera en `TRANSIT_WAIT`.
 - **Basura y salud** (`systems/garbage.ts`, `systems/health.ts`): `collectGarbage` va en `SYSTEMS` (no en `refreshDerived`: cambia la capa persistente `garbage` y la carga de los vertederos); la salud la calcula `computeInfluence` antes de la felicidad. Todo se apaga sin `state.sanitation`. Una instalación nueva: entrada en `buildings.ts` con `garbage: { collect, radius, storage? }`; camas nuevas: `beds`.
 - **Educación y edades** (`systems/demography.ts`): la población es un reparto de fracciones (`state.demography`: niños, mayores y adultos por estudios) que `updateDemography` actualiza al cerrar el mes; `computeEducation` (desde `computeStats`) cuenta plazas y empleo cualificado cada día. Para no cambiar nada sin la fase, todo pasa por `workforceRatio`, `incomeIndex`, `qualifiedSurplus` y `schoolShortagePenalty`, que devuelven lo de antes si `demographics` es false. Plazas nuevas: `seats` en `buildings.ts`.
+- **Monumento nuevo**: entrada en `buildings.ts` con `category: 'monuments'` y `monument: { attraction }` (son únicos: lo comprueba `commands.ts`), y volúmenes propios en `art/buildings.ts`. El turismo (`systems/tourism.ts`) va en `SYSTEMS` después de la influencia; los turistas en coche se suman al tráfico del día siguiente. Sin monumentos no hay turismo, así que no hace falta opción de partida; el bot solo los construye con `monuments: true`.
 - **Ajuste del jugador**: añadir una entrada en `SETTING_FIELDS` (ui/settings.ts) y aplicarla en `main.ts`.
 
 ## Continuar en otro PC

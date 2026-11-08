@@ -72,6 +72,7 @@ export const DATA = {
   eduNone: '#E5806F',
   eduBasic: '#E8B45A',
   eduHigher: '#7DC4A0',
+  tourism: '#D2AE70',
 } as const;
 
 export const FONTS = {

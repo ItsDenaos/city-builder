@@ -29,7 +29,7 @@ export interface MenuCategory {
   items: MenuItem[];
 }
 
-const CATEGORY_ICONS: Record<string, IconName> = { power: 'pylon', water: 'drop', services: 'services', parks: 'park', transport: 'bus', waste: 'truck' };
+const CATEGORY_ICONS: Record<string, IconName> = { power: 'pylon', water: 'drop', services: 'services', parks: 'park', transport: 'bus', waste: 'truck', monuments: 'monument' };
 
 export const formatMoney = (n: number) => `$${Math.round(n).toLocaleString('es-ES')}`;
 
@@ -97,7 +97,7 @@ export const MENUS: readonly MenuCategory[] = [
     icon: CATEGORY_ICONS[c.id] ?? 'services',
     items: [...(NETWORK_TOOLS[c.id] ?? []), ...BUILDINGS.filter((b) => b.category === c.id).map((b) => ({
       label: b.name,
-      detail: `${b.size.w}×${b.size.h}`,
+      detail: b.monument ? `${b.size.w}×${b.size.h} · único` : `${b.size.w}×${b.size.h}`,
       tool: { kind: 'building', defId: b.id } as Tool,
       cost: formatMoney(b.cost),
       unlockAtPopulation: b.unlockAtPopulation,

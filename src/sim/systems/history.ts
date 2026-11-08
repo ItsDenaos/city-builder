@@ -23,6 +23,7 @@ export function recordHistory(state: GameState, events: SimEvent[]): void {
     garbage: stats.garbage.dirtyShare,
     ages: { children: d.children, adults: adultsOf(d), elderly: d.elderly },
     education: { none: d.none, basic: d.basic, higher: d.higher },
+    visitors: stats.tourism.visitors,
   });
   if (state.history.length > STATS_HISTORY_MONTHS) state.history.shift();
 }

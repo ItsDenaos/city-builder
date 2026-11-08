@@ -142,6 +142,17 @@ export const CIVIC = {
   recyclingRoof: '#6F8F6A',
   incineratorWall: '#C9C1B8',
   incineratorRoof: '#7A6F68',
+  // Monumentos
+  greenhouse: '#BFD6CF',
+  gardenGround: '#8FAE86',
+  museumWall: '#EEE9DF',
+  museumRoof: '#9AA7AE',
+  theaterWall: '#E8DFD3',
+  theaterRoof: '#8E4B4B',
+  stadiumStand: '#D9D4C8',
+  stadiumRoof: '#5F7D8C',
+  stadiumField: '#7E9C78',
+  towerShaft: '#E2DCCD',
   smoke: '225, 225, 222',
 } as const;
 

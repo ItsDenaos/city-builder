@@ -32,6 +32,7 @@ const EXPENSE_LABELS: Record<keyof Budget['expenses'], string> = {
   parks: 'Parques',
   transport: 'Transporte',
   waste: 'Residuos',
+  monuments: 'Monumentos',
   ordinances: 'Ordenanzas',
   loans: 'Préstamos',
 };
@@ -212,6 +213,7 @@ export class BudgetPanel {
       <div class="section-title"><span class="kicker">Impuestos</span><span class="kicker">Ingreso / mes</span></div>
       ${taxes}
       ${est.fares > 0 ? kv('Billetes de transporte', formatMoney(est.fares)) : ''}
+      ${est.tourism > 0 ? kv('Turismo', formatMoney(est.tourism)) : ''}
       <div class="section-title"><span class="kicker">Financiación</span><span class="kicker">Gasto / mes</span></div>
       ${funding}
       <p class="muted">En los servicios, por debajo de 100 % la cobertura es más débil y por encima llega más lejos; en el transporte cambia la frecuencia. Más financiación, más gasto.</p>

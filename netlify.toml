@@ -1,0 +1,28 @@
+# Despliegue en Netlify (ver «Desplegar en Netlify» en el README).
+# Netlify lee este archivo al conectar el repositorio: no hace falta configurar nada en su panel.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Vite 6 necesita Node 18 o superior
+  NODE_VERSION = "22"
+
+# Los archivos de assets/ llevan un hash en el nombre: se pueden guardar en caché para siempre
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# El juego es una sola página: cualquier ruta desconocida vuelve a él
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

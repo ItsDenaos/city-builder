@@ -60,6 +60,7 @@ const CHARTS: Chart[] = [
     format: pct,
     series: [{ label: 'Trayectos en transporte público', color: DATA.transit, value: (s) => (s.transitShare ?? 0) * 100 }],
   },
+  { id: 'tourism', label: 'Turismo', zero: true, format: (v) => Math.round(v).toLocaleString('es-ES'), series: [{ label: 'Visitantes al día', color: DATA.tourism, value: (s) => s.visitors ?? 0 }] },
   {
     id: 'ages',
     label: 'Edades',

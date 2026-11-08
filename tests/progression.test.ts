@@ -112,7 +112,7 @@ describe('logros', () => {
 
   it('cuentan los balances positivos seguidos', () => {
     const s = createGame({ width: 32, height: 32, flat: true });
-    s.economy.lastMonth = { income: { R: 0, C: 0, I: 0 }, fares: 0, expenses: { roads: 0, networks: 0, power: 0, water: 0, services: 0, parks: 0, transport: 0, waste: 0, ordinances: 0, loans: 0 }, departments: { police: 0, fire: 0, health: 0, education: 0, park: 0, transit: 0, waste: 0 }, totalIncome: 10, totalExpenses: 0, net: 10 };
+    s.economy.lastMonth = { income: { R: 0, C: 0, I: 0 }, fares: 0, tourism: 0, expenses: { roads: 0, networks: 0, power: 0, water: 0, services: 0, parks: 0, transport: 0, waste: 0, monuments: 0, ordinances: 0, loans: 0 }, departments: { police: 0, fire: 0, health: 0, education: 0, park: 0, transit: 0, waste: 0 }, totalIncome: 10, totalExpenses: 0, net: 10 };
     for (let k = 0; k < 3; k++) updateProgress(s, month());
     expect(s.progress.monthsPositive).toBe(3);
     s.economy.lastMonth.net = -1;
@@ -147,7 +147,7 @@ describe('escenarios', () => {
     for (const z of ['R', 'C', 'I'] as const) applyCommand(s, { type: 'setTaxRate', zone: z, rate: 11 });
     expect(estimateBudget(s).net).toBeGreaterThan(0);
     for (let d = 0; d < 30; d++) tick(s); // la partida avanza sin errores
-  }, 30_000);
+  }, 120_000); // preparar la herencia juega años con el bot (~17 s solo, más con el resto de la suite en paralelo)
 });
 
 describe('partidas guardadas', () => {

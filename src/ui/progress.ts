@@ -1,10 +1,12 @@
 import { ACHIEVEMENTS } from '../sim/data/achievements';
+import { MONUMENTS } from '../sim/data/buildings';
 import { RANKS } from '../sim/data/progression';
 import { getScenario } from '../sim/data/scenarios';
 import { nextPlotCost, ownedPlots } from '../sim/land';
 import { scenarioGoals } from '../sim/scenarios';
-import type { GameState } from '../sim/state';
+import { type GameState, isUnlocked } from '../sim/state';
 import { unlocksBetween } from '../sim/systems/progress';
+import { monumentProblem, monumentVisitors } from '../sim/systems/tourism';
 import { rankEmblemSVG } from './brand';
 import { icon } from './icons';
 import { formatMoney } from './menus';
@@ -16,7 +18,7 @@ function bar(value: number, done = value >= 1): string {
   return `<div class="meter-track"><div class="meter-fill" style="width:${Math.round(Math.min(1, value) * 100)}%;background:${done ? 'var(--ui-positive)' : 'var(--ui-gold)'}"></div></div>`;
 }
 
-/** Panel de progreso: rango y próxima meta, terreno, escenario en curso y logros. */
+/** Panel de progreso: rango y próxima meta, terreno, monumentos y turismo, escenario en curso y logros. */
 export class ProgressPanel {
   readonly el = document.createElement('section');
   private body = document.createElement('div');
@@ -96,6 +98,28 @@ export class ProgressPanel {
       for (const b of outages) html += `<div class="kv"><span>Avería</span><span class="tone-warning">${b.outage} ${b.outage === 1 ? 'día' : 'días'} para la reparación</span></div>`;
       for (const e of inc.effects) html += `<div class="kv"><span>${e.label}</span><span>${e.monthsLeft} ${e.monthsLeft === 1 ? 'mes' : 'meses'}</span></div>`;
     }
+
+    // Monumentos y turismo (fase 19)
+    const t = state.stats.tourism;
+    const built = MONUMENTS.filter((m) => [...state.buildings.values()].some((b) => b.defId === m.id)).length;
+    html += `<div class="section-title"><span class="kicker">Monumentos</span><span class="muted num">${built} de ${MONUMENTS.length}</span></div>`;
+    if (t.visitors > 0) {
+      html += `<div class="kv"><span>Visitantes</span><span class="num">${n(Math.round(t.visitors))} al día</span></div>
+        <div class="kv"><span>Atractivo de la ciudad</span><span class="num">${Math.round(t.quality * 100)} %</span></div>
+        <div class="kv"><span>Gasto de los turistas</span><span class="num">${formatMoney(t.revenue)} / mes</span></div>`;
+    }
+    html += '<div class="achievements">';
+    for (const m of MONUMENTS) {
+      const b = [...state.buildings.values()].find((x) => x.defId === m.id);
+      const locked = !isUnlocked(state, m.unlockAtPopulation);
+      const status = b
+        ? (monumentProblem(state, b) ?? `${n(Math.round(monumentVisitors(state, b)))} visitantes al día`)
+        : locked
+          ? `Con ${n(m.unlockAtPopulation)} habitantes`
+          : `Disponible · ${formatMoney(m.cost)}`;
+      html += `<div class="achievement ${b ? 'is-done' : ''}"><span class="icon-wrap">${icon(b ? 'monument' : locked ? 'lock' : 'plus', 14)}</span><div><span class="achievement-name">${m.name}</span><span class="muted">${status}</span></div></div>`;
+    }
+    html += '</div>';
 
     const sc = state.scenario;
     const def = sc && getScenario(sc.id);

@@ -2,6 +2,7 @@ import { COMMUTE_OK } from '../config';
 import { mulberry32 } from '../rng';
 import type { GameState } from '../state';
 import { qualifiedSurplus } from '../systems/demography';
+import { getBuildingDef } from './buildings';
 import { ROAD_BY_CODE } from './roads';
 import { ZONE_CODE, getZoneDefByCode } from './zones';
 
@@ -133,6 +134,17 @@ function nearJam(s: GameState, i: number, r = 2): boolean {
   return false;
 }
 
+/** Hay un monumento a `r` casillas o menos del lote. */
+function nearMonument(s: GameState, i: number, r = 10): boolean {
+  if (!s.stats.tourism.monuments) return false;
+  const x = i % s.map.width;
+  const y = (i - x) / s.map.width;
+  for (const b of s.buildings.values()) {
+    if (getBuildingDef(b.defId)?.monument && Math.hypot(b.x + b.w / 2 - x, b.y + b.h / 2 - y) <= r) return true;
+  }
+  return false;
+}
+
 const unemployment = (s: GameState) => (s.stats.workforce ? Math.max(0, s.stats.workforce - s.stats.employed) / s.stats.workforce : 0);
 const cityHasJobs = (s: GameState) => s.stats.jobs.C + s.stats.jobs.I + s.stats.jobs.services > 0;
 
@@ -205,6 +217,11 @@ export const TOPICS: readonly TopicDef[] = [
     petition: { title: () => 'Bajar el impuesto residencial', months: 3, goal: (s) => atMost('Impuesto residencial (%)', s.economy.taxes.R, 10) },
   },
   {
+    id: 'turistas', tone: 'queja', speaker: 'vecino',
+    detect: (s, i) => s.stats.tourism.visitors >= 300 && nearJam(s, i),
+    lines: ['Con tanto turista no hay quien aparque.', 'Los autobuses de turistas colapsan la calle.'],
+  },
+  {
     id: 'sin-salud', tone: 'queja', speaker: 'vecino',
     detect: (s, i) => L(s).coverage.health[i] < 15 && s.stats.population >= 800,
     lines: ['El centro de salud más cercano está lejísimos.', 'Para ir al médico hay que cruzar media ciudad.'],
@@ -254,6 +271,11 @@ export const TOPICS: readonly TopicDef[] = [
     lines: ['Mi hija estudia en la universidad de la ciudad.', 'Aquí los chavales pueden estudiar sin irse fuera.'],
   },
   {
+    id: 'monumento', tone: 'elogio', speaker: 'vecino',
+    detect: (s, i) => L(s).happiness[i] >= 60 && nearMonument(s, i),
+    lines: ['Qué orgullo tener un monumento en el barrio.', 'Los domingos paseamos hasta el monumento.', 'Vienen a vernos desde toda la región.'],
+  },
+  {
     id: 'feliz', tone: 'elogio', speaker: 'vecino',
     detect: (s, i) => L(s).happiness[i] >= 70,
     lines: ['Me encanta vivir aquí.', 'Esta ciudad va a mejor.', 'No cambiaría mi barrio por nada.'],
@@ -282,6 +304,11 @@ export const TOPICS: readonly TopicDef[] = [
     id: 'sin-cualificados', tone: 'queja', speaker: 'negocio',
     detect: (s, i) => s.demographics && s.map.lotLevel[i] >= 2 && s.stats.education.jobsHigher > 0 && qualifiedSurplus(s, 3) <= 0,
     lines: ['No encontramos personal con estudios.', 'Necesitamos ingenieros y no hay ni uno en la ciudad.'],
+  },
+  {
+    id: 'turistas-negocio', tone: 'elogio', speaker: 'negocio',
+    detect: (s, i) => s.map.zoneType[i] === ZONE_CODE.C && s.stats.tourism.visitors >= 50,
+    lines: ['Los turistas no paran de entrar en la tienda.', 'Este verano hemos hecho caja con los turistas.'],
   },
   {
     id: 'camiones', tone: 'queja', speaker: 'negocio',

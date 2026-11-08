@@ -10,6 +10,7 @@ import { growLots } from './systems/growth';
 import { updateIncidents } from './systems/incidents';
 import { collectGarbage } from './systems/garbage';
 import { computeInfluence } from './systems/influence';
+import { computeTourism } from './systems/tourism';
 import { updateProgress } from './systems/progress';
 import { advanceTime } from './systems/time';
 import { computeTraffic } from './systems/traffic';
@@ -27,6 +28,7 @@ const SYSTEMS: System[] = [
   computeTraffic, // necesita la ocupación de los lotes
   collectGarbage, // necesita el acceso y la electricidad de las instalaciones
   computeInfluence, // necesita el empleo, los trayectos y la basura para la felicidad (y calcula la salud)
+  computeTourism, // necesita la felicidad y el crimen
   updateDemand,
   growLots,
   updateIncidents, // incendios (necesitan la cobertura de bomberos), averías y eventos

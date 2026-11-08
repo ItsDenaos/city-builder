@@ -60,6 +60,7 @@ export function estimateBudget(state: GameState): Budget {
     parks: 0,
     transport: 0,
     waste: 0,
+    monuments: 0,
     ordinances: activeOrdinances(state).reduce((sum, o) => sum + o.cost, 0),
     loans: economy.loans.reduce((sum, l) => sum + dueThisMonth(l), 0),
   };
@@ -78,9 +79,11 @@ export function estimateBudget(state: GameState): Budget {
 
   // Billetes: cada viajero diario deja TRANSIT_FARE al mes
   const fares = state.stats.transit.riders * TRANSIT_FARE;
-  const totalIncome = income.R + income.C + income.I + fares;
+  // Turismo (fase 19): lo que gastan los visitantes
+  const tourism = state.stats.tourism.revenue;
+  const totalIncome = income.R + income.C + income.I + fares + tourism;
   const totalExpenses = Object.values(expenses).reduce((a, b) => a + b, 0);
-  return { income, fares, expenses, departments, totalIncome, totalExpenses, net: totalIncome - totalExpenses };
+  return { income, fares, tourism, expenses, departments, totalIncome, totalExpenses, net: totalIncome - totalExpenses };
 }
 
 /** Paga una cuota de cada préstamo; quita los que quedan saldados. */

@@ -9,10 +9,28 @@ Simulación urbana para navegador al estilo SimCity / Cities: Skylines. La ciuda
 ```bash
 npm install
 npm run dev        # http://localhost:5173  (?seed=123 para otro mapa de fondo)
-npm test           # tests (simulación, guardado, marca y objetivos de balance, ~30 s)
+npm test           # tests (simulación, guardado, marca y objetivos de balance, ~3 min)
 npm run balance    # informe de balance: el jugador automático juega varios escenarios
 npm run build      # comprobación de tipos y versión de producción en dist/
+npm run preview    # sirve la versión de producción de dist/ (http://localhost:4173)
 ```
+
+## Desplegar en Netlify
+
+El juego es una página estática: Netlify compila con `npm run build` y publica `dist/`. Toda la configuración está en `netlify.toml` (versión de Node, caché de los archivos con hash y redirección de cualquier ruta al juego).
+
+1. En [app.netlify.com](https://app.netlify.com), **Add new site → Import an existing project → GitHub** y elige `ItsDenaos/city-builder`.
+2. Netlify lee `netlify.toml`: no hay que tocar la configuración de compilación. Pulsa **Deploy**.
+3. A partir de ahí, cada `git push` a `master` publica una versión nueva (y cada pull request, una vista previa).
+
+Sin conectar el repositorio, también se puede subir a mano desde la terminal (pide iniciar sesión en Netlify la primera vez):
+
+```bash
+npm run build
+npx netlify-cli deploy --prod --dir dist
+```
+
+Las partidas se guardan en el navegador de cada jugador (`localStorage`), así que no hace falta servidor ni base de datos.
 
 ## Controles
 
@@ -69,7 +87,7 @@ src/
     save.ts       serializar y restaurar partidas (las capas derivadas se recalculan)
     simulation.ts tick diario y lista de sistemas
     autoplayer.ts jugador automático (balance y ciudad de demostración)
-    systems/      un archivo por sistema (demanda, crecimiento, redes, economía, influencia, tráfico, transporte, basura, salud, demografía, distritos...)
+    systems/      un archivo por sistema (demanda, crecimiento, redes, economía, influencia, tráfico, transporte, basura, salud, demografía, turismo, distritos...)
     data/         catálogos de zonas, edificios, vías, departamentos y ordenanzas: los menús se generan a partir de aquí
   render/       cámara y canvas (solo lee el estado)
     art/          suelo, calles, edificios, coches, paleta y la imagen por casilla para el zoom alejado
@@ -103,4 +121,5 @@ balance/        informes de balance (npm run balance)
 - [x] **Fase 16**: transporte público y reparto modal. Paradas de autobús (por las calles, con la mitad de la congestión), estaciones de metro unidas por túneles que se trazan como las tuberías (rápidas y sin atascos) y estaciones de tren (línea regional entre estaciones; la primera trae demanda comercial e industrial). Cada vivienda compara el trayecto en coche con el de la parada a pie más barata (andar, esperar, viajar y andar hasta el empleo) y una parte de sus trabajadores deja el coche: menos tráfico y trayectos más cortos. Departamento de Transporte en la financiación (más frecuencia, esperas más cortas), billetes como ingreso, vista de datos «Transporte público», viajeros por parada en el inspector (y por qué no los tiene), gráfica de reparto modal, queja y petición «transporte público» en el Ágora y el logro «Sin coche» (19 logros)
 - [x] **Fase 14**: basura y salud (en las partidas del menú y los escenarios). Cada lote produce basura según sus ocupantes; el vertedero (que se llena), el centro de reciclaje y la incineradora la recogen hasta su capacidad diaria, de los lotes más cercanos a los más lejanos de su radio. Donde no se recoge se acumula y, pasado un mínimo, quita felicidad, valor del suelo y salud. Cada vivienda tiene un índice de salud (sanidad, contaminación y basura): con salud baja hay enfermos, que no trabajan y ocupan camas de clínicas y hospitales; sin cama, más descontento. Departamento de Residuos en la financiación, ordenanza «Recogida selectiva», vistas «Basura» y «Salud de los vecinos», gráfica de salud, quejas y peticiones en el Ágora, avisos del asesor, logro «Ciudad limpia» (20 logros) y el jugador automático gestiona la basura (hay un objetivo de balance con el sistema activo)
 - [x] **Fase 15**: educación y edades (en las partidas del menú y los escenarios). La población se reparte en niños, adultos y mayores: cada mes nacen niños, los niños se hacen adultos, los adultos se jubilan y los mayores mueren (menos con buena sanidad); los recién llegados traen su propia mezcla y una ciudad que no crece envejece. Solo trabajan los adultos. Los adultos tienen estudios básicos, superiores o ninguno: las plazas escolares (escuela para los básicos; instituto y la nueva universidad para los superiores) educan a los niños que se hacen adultos y atraen a familias con estudios. Los sueldos, y con ellos el impuesto residencial, dependen de los estudios (los mayores pagan menos); el comercio y la industria necesitan trabajadores con estudios para subir a los niveles 2 y 3, y la falta de plazas escolares disgusta a las familias. Plazas en el inspector, desglose de la población en la barra superior, gráficas de edades y de estudios, quejas, petición y elogio en el Ágora, avisos del asesor y logro «Ciudad universitaria» (21 logros); el jugador automático construye escuelas, institutos y universidad (objetivo de balance de una partida completa)
-- [ ] **Fases 19-21**: monumentos y turismo, ambiente (día y noche, clima, sonido), rendimiento y accesibilidad
+- [x] **Fase 19**: monumentos y turismo. Cinco monumentos únicos que se desbloquean con la población (jardín botánico, museo de la ciudad, teatro, estadio y torre mirador): suben el valor del suelo a su alrededor y dan orgullo de ciudad (felicidad en todas las viviendas). Los visitantes diarios dependen de su atractivo y de lo feliz y segura que es la ciudad; gastan dinero (ingreso de turismo, que sigue al impuesto comercial), piden comercio y llegan en coche desde el borde del mapa (cargan las calles hasta los monumentos) o en tren, si hay estación (y entonces vienen más). Sección de monumentos en el panel de progreso, visitantes en el inspector, gráfica de turismo, Ágora, avisos del asesor y los logros «Destino turístico» y «Patrimonio» (23 logros). Los monumentos solo salen rentables en una ciudad feliz y segura
+- [ ] **Fases 20-21**: ambiente (día y noche, clima, sonido), rendimiento y accesibilidad

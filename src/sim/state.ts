@@ -137,7 +137,24 @@ export interface CityStats {
   garbage: GarbageStats;
   health: HealthStats;
   education: EducationStats;
+  tourism: TourismStats;
 }
+
+/** Monumentos y turismo (fase 19). */
+export interface TourismStats {
+  /** Monumentos en servicio y su atractivo total. */
+  monuments: number;
+  attraction: number;
+  /** Calidad de la ciudad para los turistas (felicidad y seguridad). */
+  quality: number;
+  /** Visitantes al día y los que llegan en tren. */
+  visitors: number;
+  byTrain: number;
+  /** Lo que gastan al mes. */
+  revenue: number;
+}
+
+export const newTourismStats = (): TourismStats => ({ monuments: 0, attraction: 0, quality: 0, visitors: 0, byTrain: 0, revenue: 0 });
 
 /**
  * Plazas escolares y empleo cualificado (fase 15). Los puestos de los lotes de nivel 2 (y los de servicios)
@@ -247,6 +264,8 @@ export interface Budget {
   income: Record<ZoneType, number>;
   /** Billetes del transporte público (fase 16), ya incluidos en `totalIncome`. */
   fares: number;
+  /** Gasto de los turistas (fase 19), ya incluido en `totalIncome`. */
+  tourism: number;
   expenses: {
     roads: number;
     networks: number;
@@ -256,6 +275,7 @@ export interface Budget {
     parks: number;
     transport: number;
     waste: number;
+    monuments: number;
     ordinances: number;
     loans: number;
   };
@@ -301,6 +321,8 @@ export interface StatsSample {
   /** Salud media y fracción de lotes con basura acumulada (no existen antes de la fase 14). */
   health?: number;
   garbage?: number;
+  /** Visitantes al día (no existe antes de la fase 19). */
+  visitors?: number;
   /** Edades y estudios (fracciones de la población; no existen antes de la fase 15). */
   ages?: { children: number; adults: number; elderly: number };
   education?: { none: number; basic: number; higher: number };
@@ -590,6 +612,7 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       garbage: newGarbageStats(),
       health: newHealthStats(),
       education: newEducationStats(),
+      tourism: newTourismStats(),
     },
     progress: newProgress(),
     land: null,

@@ -55,6 +55,7 @@ const PATHS = {
   flag: '<path d="M5 17.5V3M5 4h10l-2.5 3.5L15 11H5"/>',
   plot: '<rect x="3.5" y="3.5" width="13" height="13"/><path d="M3.5 10h13M10 3.5v13" stroke-dasharray="2 2"/>',
   bus: '<rect x="4" y="3" width="12" height="11.5"/><path d="M4 9h12M4 6h12M6.5 14.5V17M13.5 14.5V17"/><path d="M6.5 11.8h1M12.5 11.8h1"/>',
+  monument: '<path d="M4.5 17.5h11M6.5 17.5v-3h7v3M8 14.5V7.5h4v7M9 7.5V4h2v3.5M10 4V2"/>',
   truck: '<path d="M2.5 5.5h9v8h-9zM11.5 8.5h3.5l2.5 2.5v2.5h-6"/><circle cx="5.5" cy="15" r="1.6"/><circle cx="14.5" cy="15" r="1.6"/>',
   tunnel: '<path d="M3 16.5V10a7 7 0 0 1 14 0v6.5"/><path d="M6.5 16.5V10.5a3.5 3.5 0 0 1 7 0v6"/><path d="M2.5 16.5h15"/>',
 } as const;

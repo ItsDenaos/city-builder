@@ -73,6 +73,15 @@ describe('balance', () => {
     expect(full.s.stats.education.basicRate).toBeGreaterThan(0.9);
   }, 150_000);
 
+  it('con monumentos la ciudad no quiebra y recibe turistas', async () => {
+    const tourist = await play(8, { sanitation: true, demographics: true, monuments: true });
+    expect(tourist.s.economy.bankrupt).toBe(false);
+    expect(tourist.yearly.every((y) => y.money > 0)).toBe(true);
+    expect(tourist.s.stats.tourism.monuments).toBeGreaterThanOrEqual(2);
+    expect(tourist.s.stats.tourism.visitors).toBeGreaterThan(50);
+    expect(tourist.s.stats.population).toBeGreaterThan(normal.s.stats.population * 0.5);
+  }, 150_000);
+
   it('subir mucho los impuestos frena el crecimiento', async () => {
     const high = await play(8, { taxes: { R: 14, C: 14, I: 14 } });
     expect(high.s.stats.population).toBeLessThan(normal.s.stats.population / 2);

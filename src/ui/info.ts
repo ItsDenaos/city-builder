@@ -3,6 +3,7 @@ import { ROAD_BY_CODE } from '../sim/data/roads';
 import { DENSITY_BY_CODE, DENSITY_LABEL, ZONE_BY_CODE, ZONE_CODE, ZONE_TYPE_LABEL, getZoneDefByCode } from '../sim/data/zones';
 import { hasRoadAccess } from '../sim/systems/access';
 import { facilityProblem } from '../sim/systems/garbage';
+import { monumentProblem, monumentVisitors } from '../sim/systems/tourism';
 import { stopProblem } from '../sim/systems/transit';
 import { type BuildingInstance, type GameState, NO_BUILDING, inBounds, tileIndex } from '../sim/state';
 import { type Point, TERRAIN_WATER } from '../sim/types';
@@ -110,7 +111,7 @@ export function describeTile(state: GameState, p: Point): TileInfo | null {
     const b = state.buildings.get(id);
     const def = b && getBuildingDef(b.defId);
     if (b && def) {
-      kicker = { power: 'Electricidad', water: 'Agua', services: 'Servicio público', parks: 'Parque', transport: 'Transporte', waste: 'Residuos' }[def.category];
+      kicker = { power: 'Electricidad', water: 'Agua', services: 'Servicio público', parks: 'Parque', transport: 'Transporte', waste: 'Residuos', monuments: 'Monumento' }[def.category];
       title = def.name;
       if (b.outage) rows.push({ label: 'Avería', value: `Al 40 % durante ${b.outage} ${b.outage === 1 ? 'día' : 'días'} más`, tone: 'negative' });
       rows.push({ label: 'Mantenimiento', value: `${formatMoney(def.upkeep)} / mes` });
@@ -136,6 +137,13 @@ export function describeTile(state: GameState, p: Point): TileInfo | null {
           const full = ((b.stored ?? 0) / def.garbage.storage) * 100;
           rows.push({ label: 'Ocupado', value: `${Math.min(100, Math.round(full))} %`, tone: full >= 100 ? 'negative' : full >= 90 ? 'warning' : undefined });
         }
+      }
+      if (def.monument) {
+        const problem = monumentProblem(state, b);
+        rows.push(
+          problem ? { label: 'Visitas', value: problem, tone: 'negative' } : { label: 'Visitantes', value: `${n(monumentVisitors(state, b))} al día` },
+          { label: 'Atractivo', value: n(def.monument.attraction) },
+        );
       }
       if (def.beds) rows.push({ label: 'Camas', value: n(def.beds * (state.economy.funding.health / 100)) });
       if (def.seats) {

@@ -318,6 +318,8 @@ function buildingDef(state: GameState, defId: string): BuildingDef | string {
   const def = getBuildingDef(defId);
   if (!def) return 'Edificio desconocido';
   if (!isUnlocked(state, def.unlockAtPopulation)) return `Se desbloquea con ${def.unlockAtPopulation} habitantes`;
+  // Los monumentos son únicos
+  if (def.monument && [...state.buildings.values()].some((b) => b.defId === def.id)) return 'La ciudad ya tiene este monumento';
   return def;
 }
 

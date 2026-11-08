@@ -1,7 +1,7 @@
 import { type Command, applyCommand } from './commands';
 import { defaultChoice, getIncident } from './data/incidents';
 import { MAX_LOANS } from './config';
-import { getBuildingDef } from './data/buildings';
+import { MONUMENTS, getBuildingDef } from './data/buildings';
 import { ZONE_CODE } from './data/zones';
 import { tick } from './simulation';
 import { estimateBudget } from './systems/economy';
@@ -24,6 +24,8 @@ const RESERVE = 2_000; // dinero que intenta no gastar
 const LOW_COVERAGE = 40;
 const ZONE_DEMAND = 0.05; // la demanda a largo plazo ronda 0,1
 const MIN_FREE_LOTS = 8;
+/** Fracción del beneficio mensual que se aparta para el próximo monumento (opción `monuments`). */
+const MONUMENT_SAVING = 0.4;
 
 type BlockUse = 'R' | 'C' | 'I' | 'power' | 'water' | 'civic' | 'school' | 'waste';
 
@@ -39,6 +41,8 @@ export interface BotOptions {
   services?: boolean;
   /** Si es false, nunca pide préstamos. */
   loans?: boolean;
+  /** Si es true, construye los monumentos cuando se los puede permitir (para medir el turismo). */
+  monuments?: boolean;
 }
 
 export interface BotLog {
@@ -115,8 +119,11 @@ export class AutoPlayer {
   }
 
   private canSpend(cost: number): boolean {
-    return this.s.economy.money - cost >= RESERVE;
+    return this.s.economy.money - this.fund - cost >= RESERVE;
   }
+
+  /** Dinero apartado para el próximo monumento (opción `monuments`). */
+  private fund = 0;
 
   /** Un jugador sensato solo añade mantenimiento mensual si el presupuesto lo aguanta. */
   private canAffordUpkeep(upkeep: number): boolean {
@@ -209,6 +216,7 @@ export class AutoPlayer {
       this.ensureSchools();
       this.ensureServices();
     }
+    if (this.opts.monuments) this.ensureMonuments();
     for (const z of ['R', 'C', 'I'] as const) this.ensureZone(z);
   }
 
@@ -315,6 +323,22 @@ export class AutoPlayer {
     if (s.stats.population >= 2_000 && e.higherRate < 0.6 && qualifiedSurplus(s, 3) < 100) {
       if (!build('university', 'universidad')) build('high_school', 'instituto');
     }
+  }
+
+  /**
+   * Monumentos (solo con la opción `monuments`): cada mes aparta parte del beneficio en un fondo que los demás
+   * gastos no tocan y, cuando llega, construye el siguiente monumento desbloqueado (si su mantenimiento cabe).
+   */
+  private ensureMonuments(): void {
+    const s = this.s;
+    const m = MONUMENTS.find((d) => ![...s.buildings.values()].some((b) => b.defId === d.id));
+    if (!m || !isUnlocked(s, m.unlockAtPopulation) || !this.canAffordUpkeep(m.upkeep)) return;
+    this.fund = Math.min(m.cost, this.fund + Math.max(0, s.economy.lastMonth?.net ?? 0) * MONUMENT_SAVING);
+    if (this.fund < m.cost || s.economy.money < m.cost + RESERVE) return;
+    const b = this.pickBlock('civic');
+    if (!b) return;
+    this.claim(b);
+    if (this.cmd({ type: 'placeBuilding', defId: m.id, at: this.inner(b) }, m.name.toLowerCase())) this.fund = 0;
   }
 
   private ensureServices(): void {

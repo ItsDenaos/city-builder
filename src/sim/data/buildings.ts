@@ -1,7 +1,7 @@
 // Catálogo de edificios colocables. Para añadir un edificio basta con una entrada nueva:
 // los menús, la validación y el render lo leen de aquí.
 
-export type BuildingCategory = 'power' | 'water' | 'services' | 'parks' | 'transport' | 'waste';
+export type BuildingCategory = 'power' | 'water' | 'services' | 'parks' | 'transport' | 'waste' | 'monuments';
 export type ServiceType = 'police' | 'fire' | 'health' | 'education' | 'park';
 export type TransitMode = 'bus' | 'metro' | 'train';
 
@@ -27,6 +27,8 @@ export interface BuildingDef {
   beds?: number;
   /** Plazas escolares (fase 15): estudios básicos (escuela) o superiores (instituto y universidad). */
   seats?: { level: 'basic' | 'higher'; count: number };
+  /** Monumento (fase 19): único en la ciudad; su atractivo trae turistas. */
+  monument?: { attraction: number };
   /** Efecto máximo (escala 0-100) en el centro; decrece hasta el radio. */
   effects?: { pollution?: number; landValue?: number; crime?: number; radius: number };
   capacity?: { jobs?: number; residents?: number };
@@ -43,6 +45,7 @@ export const BUILDING_CATEGORIES: readonly { id: BuildingCategory; label: string
   { id: 'parks', label: 'Parques' },
   { id: 'transport', label: 'Transporte' },
   { id: 'waste', label: 'Residuos' },
+  { id: 'monuments', label: 'Monumentos' },
 ];
 
 export const BUILDINGS: readonly BuildingDef[] = [
@@ -168,7 +171,41 @@ export const BUILDINGS: readonly BuildingDef[] = [
     garbage: { collect: 200, radius: 44 }, power: { consumes: 6 }, effects: { pollution: 45, landValue: -15, radius: 9 },
     capacity: { jobs: 25 }, unlockAtPopulation: 4_000, color: '#7A6F68',
   },
+  // Monumentos (fase 19): uno de cada; atraen turistas si tienen calle conectada (y electricidad, si la consumen)
+  {
+    id: 'botanical_garden', name: 'Jardín botánico', short: 'JB', category: 'monuments',
+    size: { w: 4, h: 4 }, cost: 15_000, upkeep: 120,
+    monument: { attraction: 30 }, coverage: { service: 'park', radius: 10 }, effects: { landValue: 25, radius: 9 },
+    capacity: { jobs: 15 }, unlockAtPopulation: 1_500, color: '#6E9A6A',
+  },
+  {
+    id: 'museum', name: 'Museo de la ciudad', short: 'MU', category: 'monuments',
+    size: { w: 3, h: 3 }, cost: 25_000, upkeep: 200,
+    monument: { attraction: 45 }, power: { consumes: 8 }, effects: { landValue: 20, radius: 10 },
+    capacity: { jobs: 30 }, unlockAtPopulation: 3_000, color: '#B8B2A6',
+  },
+  {
+    id: 'theater', name: 'Teatro', short: 'TE', category: 'monuments',
+    size: { w: 3, h: 3 }, cost: 30_000, upkeep: 250,
+    monument: { attraction: 50 }, power: { consumes: 10 }, effects: { landValue: 15, radius: 8 },
+    capacity: { jobs: 40 }, unlockAtPopulation: 6_000, color: '#8E4B4B',
+  },
+  {
+    id: 'stadium', name: 'Estadio', short: 'ES', category: 'monuments',
+    size: { w: 4, h: 4 }, cost: 55_000, upkeep: 450,
+    monument: { attraction: 85 }, power: { consumes: 20 }, effects: { landValue: 5, radius: 10 },
+    capacity: { jobs: 60 }, unlockAtPopulation: 12_000, color: '#5F7D8C',
+  },
+  {
+    id: 'observation_tower', name: 'Torre mirador', short: 'TM', category: 'monuments',
+    size: { w: 2, h: 2 }, cost: 45_000, upkeep: 300,
+    monument: { attraction: 70 }, power: { consumes: 8 }, effects: { landValue: 20, radius: 12 },
+    capacity: { jobs: 20 }, unlockAtPopulation: 20_000, color: '#C9BFA9',
+  },
 ];
+
+/** Monumentos del catálogo, en orden de desbloqueo. */
+export const MONUMENTS: readonly BuildingDef[] = BUILDINGS.filter((b) => b.monument);
 
 const BY_ID = new Map(BUILDINGS.map((b) => [b.id, b]));
 
