@@ -4,7 +4,7 @@ import { refreshDerived } from './simulation';
 import type { BuildingInstance, GameState } from './state';
 
 // Capas que cambian los comandos (el relieve no lo cambia ninguno)
-const LAYERS = ['road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro'] as const;
+const LAYERS = ['road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro', 'garbage'] as const;
 
 /** Lo que cambia la ciudad; impuestos, préstamos y velocidad no se deshacen. */
 const UNDOABLE: ReadonlySet<Command['type']> = new Set([

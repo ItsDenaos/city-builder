@@ -16,6 +16,8 @@ export function createScenario(id: string): GameState {
   state.scenario = { id, startYear: state.time.year, endYear: state.time.year + def.years, status: 'active' };
   // Los escenarios tienen algunos imprevistos (se activan después de preparar la ciudad de partida)
   state.incidents.level = SCENARIO_INCIDENTS;
+  // Y basura y salud, como las partidas del menú
+  state.sanitation = true;
   return state;
 }
 

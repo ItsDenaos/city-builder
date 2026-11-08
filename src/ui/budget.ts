@@ -31,6 +31,7 @@ const EXPENSE_LABELS: Record<keyof Budget['expenses'], string> = {
   services: 'Servicios',
   parks: 'Parques',
   transport: 'Transporte',
+  waste: 'Residuos',
   ordinances: 'Ordenanzas',
   loans: 'Préstamos',
 };

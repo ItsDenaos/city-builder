@@ -54,6 +54,16 @@ const CHARTS: Chart[] = [
     format: pct,
     series: [{ label: 'Trayectos en transporte público', color: DATA.transit, value: (s) => (s.transitShare ?? 0) * 100 }],
   },
+  {
+    id: 'health',
+    label: 'Salud',
+    zero: true,
+    format: pct,
+    series: [
+      { label: 'Salud media', color: DATA.wellness, value: (s) => s.health ?? 0 },
+      { label: 'Lotes con basura', color: DATA.garbage, value: (s) => (s.garbage ?? 0) * 100 },
+    ],
+  },
 ];
 
 const RANGES = [

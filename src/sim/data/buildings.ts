@@ -1,7 +1,7 @@
 // Catálogo de edificios colocables. Para añadir un edificio basta con una entrada nueva:
 // los menús, la validación y el render lo leen de aquí.
 
-export type BuildingCategory = 'power' | 'water' | 'services' | 'parks' | 'transport';
+export type BuildingCategory = 'power' | 'water' | 'services' | 'parks' | 'transport' | 'waste';
 export type ServiceType = 'police' | 'fire' | 'health' | 'education' | 'park';
 export type TransitMode = 'bus' | 'metro' | 'train';
 
@@ -18,6 +18,13 @@ export interface BuildingDef {
   coverage?: { service: ServiceType; radius: number };
   /** Parada o estación de transporte público: modo y distancia a pie (casillas) desde la que se llega. */
   transit?: { mode: TransitMode; radius: number };
+  /**
+   * Recogida de basura (fase 14): unidades al día, radio de los camiones (casillas) y, en los vertederos,
+   * lo que caben en total antes de llenarse.
+   */
+  garbage?: { collect: number; radius: number; storage?: number };
+  /** Camas para vecinos enfermos (fase 14). */
+  beds?: number;
   /** Efecto máximo (escala 0-100) en el centro; decrece hasta el radio. */
   effects?: { pollution?: number; landValue?: number; crime?: number; radius: number };
   capacity?: { jobs?: number; residents?: number };
@@ -33,6 +40,7 @@ export const BUILDING_CATEGORIES: readonly { id: BuildingCategory; label: string
   { id: 'services', label: 'Servicios' },
   { id: 'parks', label: 'Parques' },
   { id: 'transport', label: 'Transporte' },
+  { id: 'waste', label: 'Residuos' },
 ];
 
 export const BUILDINGS: readonly BuildingDef[] = [
@@ -79,13 +87,13 @@ export const BUILDINGS: readonly BuildingDef[] = [
     id: 'clinic', name: 'Clínica', short: 'C', category: 'services',
     size: { w: 2, h: 2 }, cost: 4_000, upkeep: 120,
     coverage: { service: 'health', radius: 12 }, power: { consumes: 4 }, water: { consumes: 3 },
-    capacity: { jobs: 20 }, unlockAtPopulation: 0, color: '#C0503F',
+    capacity: { jobs: 20 }, beds: 40, unlockAtPopulation: 0, color: '#C0503F',
   },
   {
     id: 'hospital', name: 'Hospital', short: 'H', category: 'services',
     size: { w: 3, h: 3 }, cost: 15_000, upkeep: 400,
     coverage: { service: 'health', radius: 25 }, power: { consumes: 12 }, water: { consumes: 10 },
-    capacity: { jobs: 80 }, unlockAtPopulation: 2_000, color: '#9E3F33',
+    capacity: { jobs: 80 }, beds: 200, unlockAtPopulation: 2_000, color: '#9E3F33',
   },
   {
     id: 'elementary_school', name: 'Escuela', short: 'E', category: 'services',
@@ -131,6 +139,25 @@ export const BUILDINGS: readonly BuildingDef[] = [
     size: { w: 3, h: 3 }, cost: 14_000, upkeep: 320,
     transit: { mode: 'train', radius: 9 }, power: { consumes: 10 },
     unlockAtPopulation: 5_000, color: '#6E6585',
+  },
+  // Residuos (fase 14): recogen si tienen acceso a una calle conectada (y electricidad, si la consumen)
+  {
+    id: 'landfill', name: 'Vertedero', short: 'V', category: 'waste',
+    size: { w: 4, h: 4 }, cost: 2_500, upkeep: 50,
+    garbage: { collect: 70, radius: 32, storage: 50_000 }, effects: { pollution: 25, landValue: -25, radius: 7 },
+    capacity: { jobs: 15 }, unlockAtPopulation: 0, color: '#8C7A5B',
+  },
+  {
+    id: 'recycling_center', name: 'Centro de reciclaje', short: 'RC', category: 'waste',
+    size: { w: 3, h: 2 }, cost: 8_000, upkeep: 220,
+    garbage: { collect: 90, radius: 32 }, power: { consumes: 5 }, effects: { pollution: 6, landValue: -5, radius: 4 },
+    capacity: { jobs: 30 }, unlockAtPopulation: 2_000, color: '#6F8F6A',
+  },
+  {
+    id: 'incinerator', name: 'Incineradora', short: 'IN', category: 'waste',
+    size: { w: 3, h: 3 }, cost: 12_000, upkeep: 300,
+    garbage: { collect: 200, radius: 44 }, power: { consumes: 6 }, effects: { pollution: 45, landValue: -15, radius: 9 },
+    capacity: { jobs: 25 }, unlockAtPopulation: 4_000, color: '#7A6F68',
   },
 ];
 

@@ -176,6 +176,7 @@ function clearLot(map: GameMap, i: number): void {
   map.lotLevel[i] = 0;
   map.lotOccupants[i] = 0;
   map.fire[i] = 0; // demoler hace de cortafuegos
+  map.garbage[i] = 0; // la basura se va con el edificio
 }
 
 function clearZone(map: GameMap, i: number): void {

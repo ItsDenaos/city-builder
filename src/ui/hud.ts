@@ -53,6 +53,8 @@ const OVERLAYS: { id: Overlay; label: string }[] = [
   { id: 'pollution', label: 'Contaminación' },
   { id: 'crime', label: 'Crimen' },
   { id: 'happiness', label: 'Felicidad' },
+  { id: 'wellness', label: 'Salud de los vecinos' },
+  { id: 'garbage', label: 'Basura' },
   { id: 'police', label: 'Cobertura: policía' },
   { id: 'fire', label: 'Cobertura: bomberos' },
   { id: 'health', label: 'Cobertura: salud' },

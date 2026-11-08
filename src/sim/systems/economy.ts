@@ -57,17 +57,18 @@ export function estimateBudget(state: GameState): Budget {
     services: 0,
     parks: 0,
     transport: 0,
+    waste: 0,
     ordinances: activeOrdinances(state).reduce((sum, o) => sum + o.cost, 0),
     loans: economy.loans.reduce((sum, l) => sum + dueThisMonth(l), 0),
   };
   const transitFunding = economy.funding.transit / 100;
-  const departments = { police: 0, fire: 0, health: 0, education: 0, park: 0, transit: tunnels * METRO_TUNNEL_UPKEEP * transitFunding };
+  const departments = { police: 0, fire: 0, health: 0, education: 0, park: 0, transit: tunnels * METRO_TUNNEL_UPKEEP * transitFunding, waste: 0 };
   expenses.transport = departments.transit;
   for (const b of state.buildings.values()) {
     const def = getBuildingDef(b.defId);
     if (!def) continue;
     // La financiación del departamento escala el mantenimiento de sus edificios
-    const dept = def.coverage?.service ?? (def.transit ? 'transit' : null);
+    const dept = def.coverage?.service ?? (def.transit ? 'transit' : def.garbage ? 'waste' : null);
     const upkeep = def.upkeep * (dept ? economy.funding[dept] / 100 : 1);
     expenses[def.category] += upkeep;
     if (dept) departments[dept] += upkeep;

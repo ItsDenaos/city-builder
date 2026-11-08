@@ -42,7 +42,8 @@ export function computeStats(state: GameState): void {
   }
   for (const b of state.buildings.values()) jobs.services += getBuildingDef(b.defId)?.capacity?.jobs ?? 0;
 
-  const workforce = Math.floor(population * WORKFORCE_RATIO);
+  // Los enfermos (fase 14, del día anterior) no trabajan
+  const workforce = Math.floor(Math.max(0, population - stats.health.sick) * WORKFORCE_RATIO);
   // Los servicios públicos se cubren con quien quede libre tras comercio e industria
   workers.services = Math.min(jobs.services, Math.max(0, workforce - workers.C - workers.I));
 

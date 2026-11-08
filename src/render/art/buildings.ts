@@ -117,6 +117,21 @@ function placedBoxes(def: BuildingDef): Box[] {
         { dx: 0.15, dy: 0.95, w: 2.7, d: 1.85, h: 0.85, wall: CIVIC.stationWall, roof: CIVIC.stationRoof, kind: 'flat', label: def.short },
         { dx: 1.25, dy: 0.25, w: 0.5, d: 0.5, h: 1.9, wall: CIVIC.stationTower, roof: CIVIC.stationRoof, kind: 'flat' },
       ];
+    case 'landfill':
+      // Explanada de tierra con dos montículos y la caseta de báscula
+      return [
+        { dx: 0.15, dy: 0.15, w: 3.7, d: 3.7, h: 0, wall: CIVIC.landfillGround, roof: CIVIC.landfillGround, kind: 'paving' },
+        { dx: 0.5, dy: 0.5, w: 1.6, d: 1.4, h: 0.35, wall: CIVIC.landfillMound, roof: shade(CIVIC.landfillMound, 1.08) },
+        { dx: 2.1, dy: 1.6, w: 1.4, d: 1.3, h: 0.25, wall: CIVIC.landfillMound, roof: shade(CIVIC.landfillMound, 1.04) },
+        { dx: 0.4, dy: 2.9, w: 0.7, d: 0.6, h: 0.4, wall: M.chimneyWall, roof: M.chimneyRoof, kind: 'flat' },
+      ];
+    case 'recycling_center':
+      return [{ dx: 0.12, dy: 0.15, w: 2.76, d: 1.6, h: 0.65, wall: CIVIC.recyclingWall, roof: CIVIC.recyclingRoof, kind: 'factory', label: def.short }];
+    case 'incinerator':
+      return [
+        { dx: 2.2, dy: 0.3, w: 0.45, d: 0.45, h: 2.6, wall: M.chimneyWall, roof: M.chimneyRoof, kind: 'chimney' },
+        { dx: 0.2, dy: 0.9, w: 2.4, d: 1.9, h: 1.0, wall: CIVIC.incineratorWall, roof: CIVIC.incineratorRoof, kind: 'factory' },
+      ];
     case 'park_small':
     case 'wind_turbine':
       return [];

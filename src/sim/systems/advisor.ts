@@ -17,6 +17,10 @@ const HIGH_POLLUTION = 30;
 const LOW_HAPPINESS = 40;
 const CONGESTED_SHARE = 0.1; // fracción de vías saturadas a partir de la cual avisar
 const LONG_COMMUTE = 30;
+const GARBAGE_ADVICE_POPULATION = 200;
+const DIRTY_SHARE = 0.1;
+const LANDFILL_WARNING = 0.9;
+const MIN_SICK_ADVICE = 10;
 
 /** Una vez al mes revisa la ciudad y emite como mucho dos consejos, por orden de importancia. */
 export function advise(state: GameState, events: SimEvent[]): void {
@@ -75,6 +79,22 @@ export function advise(state: GameState, events: SimEvent[]): void {
     if (!hasProducer('water')) advice.push('Sin agua los edificios no pasan del nivel 1: construye una torre o bomba de agua y tuberías.');
     else if (utilities.water.demand > utilities.water.production) advice.push('No hay agua suficiente: construye otra bomba o torre de agua.');
     else advice.push('Muchos edificios no tienen agua: extiende las tuberías.');
+  }
+  // Basura y salud (fase 14)
+  if (state.sanitation && stats.population >= GARBAGE_ADVICE_POPULATION) {
+    const g = stats.garbage;
+    const h = stats.health;
+    if (g.produced > g.capacity) {
+      advice.push(
+        g.capacity ? 'Se recoge menos basura de la que se produce: amplía la recogida.' : 'La basura se acumula en las calles: construye un vertedero.',
+      );
+    } else if (g.dirtyShare > DIRTY_SHARE) {
+      advice.push('Hay barrios sin recogida de basura: los camiones no llegan tan lejos.');
+    }
+    if (g.landfillCapacity && g.landfillUsed > g.landfillCapacity * LANDFILL_WARNING) {
+      advice.push('Los vertederos están casi llenos: construye otro, un centro de reciclaje o una incineradora.');
+    }
+    if (h.sick > h.beds && h.sick >= MIN_SICK_ADVICE) advice.push('Hay vecinos enfermos sin cama: construye clínicas u hospitales.');
   }
   // Medias de lo que viven los habitantes (ponderadas por ocupantes de lotes residenciales)
   if (stats.population >= SERVICE_ADVICE_POPULATION) {

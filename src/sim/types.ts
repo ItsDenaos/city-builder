@@ -38,4 +38,6 @@ export type SimEvent =
   | { type: 'petitionNew'; title: string; x: number; y: number }
   | { type: 'petition'; title: string; done: boolean }
   | { type: 'electionSoon'; months: number; approval: number }
-  | { type: 'election'; won: boolean; share: number; year: number };
+  | { type: 'election'; won: boolean; share: number; year: number }
+  /** Un vertedero se ha llenado y deja de recoger basura. */
+  | { type: 'landfillFull'; name: string; x: number; y: number };

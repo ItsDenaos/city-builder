@@ -26,7 +26,7 @@ const COLORS = WORLD;
 const TABLE_GRID = 4;
 
 export type HeatOverlay = 'pollution' | 'crime' | 'landValue' | 'happiness' | 'police' | 'fire' | 'health' | 'education' | 'park';
-export type Overlay = 'none' | 'power' | 'water' | 'traffic' | 'transit' | HeatOverlay;
+export type Overlay = 'none' | 'power' | 'water' | 'traffic' | 'transit' | 'garbage' | 'wellness' | HeatOverlay;
 
 type Ramp = (v: number) => string;
 const rgbOf = (hex: string) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
@@ -61,6 +61,8 @@ const HEAT_RAMPS: Record<HeatOverlay, Ramp> = {
 };
 const trafficRamp = quantized(scoreRamp);
 const transitRamp = quantized(alphaRamp(DATA.transit));
+const garbageRamp = quantized(alphaRamp(DATA.garbage));
+const wellnessRamp = quantized(scoreRamp);
 
 const isConsumer = (map: GameMap, i: number) => map.lotLevel[i] > 0 || map.building[i] !== NO_BUILDING;
 
@@ -84,6 +86,19 @@ function overlayColor(state: GameState, overlay: Overlay): ((i: number) => strin
       }
       return layers.transitCoverage[i] ? COLORS.transitCovered : null;
     };
+  }
+  if (overlay === 'garbage') {
+    // Basura acumulada en cada lote; las instalaciones de residuos, marcadas (en rojo si no recogen)
+    return (i) => {
+      const id = map.building[i];
+      if (id !== NO_BUILDING && getBuildingDef(state.buildings.get(id)?.defId ?? '')?.garbage) {
+        return layers.wasteFacilities.has(id) ? COLORS.wasteFacility : COLORS.unserved;
+      }
+      return map.lotLevel[i] ? garbageRamp(map.garbage[i]) : null;
+    };
+  }
+  if (overlay === 'wellness') {
+    return (i) => (map.zoneType[i] === ZONE_CODE.R && map.lotLevel[i] ? wellnessRamp(layers.health[i]) : null);
   }
   if (overlay === 'water') {
     return (i) => (isConsumer(map, i) ? (layers.watered[i] ? COLORS.waterServed : COLORS.unserved) : layers.watered[i] ? COLORS.waterCovered : null);

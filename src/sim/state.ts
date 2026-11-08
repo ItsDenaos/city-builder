@@ -1,4 +1,4 @@
-import { DEFAULT_MAP_SIZE, ELECTION_YEARS, FUNDING_DEFAULT, START_MONEY, START_YEAR, TAX_DEFAULT } from './config';
+import { DEFAULT_MAP_SIZE, ELECTION_YEARS, FUNDING_DEFAULT, HEALTH_BASE, START_MONEY, START_YEAR, TAX_DEFAULT } from './config';
 import { generateTerrain } from './mapgen';
 import type { ServiceType } from './data/buildings';
 import type { Funding } from './data/departments';
@@ -34,6 +34,8 @@ export interface GameMap {
   fire: Uint8Array;
   /** Túnel de metro (subterráneo: convive con cualquier cosa en superficie). */
   metro: Uint8Array;
+  /** Basura acumulada sin recoger en cada lote construido, 0-100 (fase 14). */
+  garbage: Float32Array;
 }
 
 /** Modo de transporte público de un lote en las capas derivadas (0 = ninguno). */
@@ -73,6 +75,12 @@ export interface DerivedLayers {
    * y coste del viaje desde ella hasta un empleo (Infinity si no lleva a ninguno). Para el inspector.
    */
   transitStops: Map<number, { egress: number; cost: number }>;
+  /** Salud de los vecinos de cada lote residencial, 0-100 (fase 14). */
+  health: Float32Array;
+  /** Fracción de enfermos de cada lote residencial (0 si la partida no tiene basura y salud). */
+  sick: Float32Array;
+  /** Instalaciones de residuos en servicio (por id de edificio): basura recogida hoy y capacidad del día. */
+  wasteFacilities: Map<number, { collected: number; capacity: number }>;
 }
 
 export interface UtilityStats {
@@ -90,6 +98,8 @@ export interface BuildingInstance {
   h: number;
   /** Días que le faltan para volver a funcionar tras una avería. */
   outage?: number;
+  /** Basura almacenada en un vertedero (fase 14). */
+  stored?: number;
 }
 
 export interface GameTime {
@@ -114,7 +124,36 @@ export interface CityStats {
   happiness: number;
   traffic: { trips: number; congestedShare: number; avgCommute: number };
   transit: TransitStats;
+  garbage: GarbageStats;
+  health: HealthStats;
 }
+
+/** Basura (fase 14), en unidades al día. */
+export interface GarbageStats {
+  produced: number;
+  collected: number;
+  /** Lo que podrían recoger hoy las instalaciones en servicio. */
+  capacity: number;
+  /** Fracción de lotes construidos con la basura acumulada (≥ 50). */
+  dirtyShare: number;
+  /** Basura en los vertederos y lo que caben entre todos. */
+  landfillUsed: number;
+  landfillCapacity: number;
+}
+
+/** Salud de los vecinos (fase 14). */
+export interface HealthStats {
+  /** Salud media de los habitantes, 0-100. */
+  average: number;
+  /** Vecinos enfermos (no trabajan). */
+  sick: number;
+  /** Camas en clínicas y hospitales en servicio, y enfermos que tienen una. */
+  beds: number;
+  treated: number;
+}
+
+export const newGarbageStats = (): GarbageStats => ({ produced: 0, collected: 0, capacity: 0, dirtyShare: 0, landfillUsed: 0, landfillCapacity: 0 });
+export const newHealthStats = (): HealthStats => ({ average: HEALTH_BASE, sick: 0, beds: 0, treated: 0 });
 
 /** Transporte público (fase 16): viajeros diarios al trabajo por modo. */
 export interface TransitStats {
@@ -151,6 +190,7 @@ export interface Budget {
     services: number;
     parks: number;
     transport: number;
+    waste: number;
     ordinances: number;
     loans: number;
   };
@@ -193,6 +233,9 @@ export interface StatsSample {
   commute: number;
   /** Fracción de trayectos en transporte público (no existe en partidas anteriores a la fase 16). */
   transitShare?: number;
+  /** Salud media y fracción de lotes con basura acumulada (no existen antes de la fase 14). */
+  health?: number;
+  garbage?: number;
 }
 
 export interface Progress {
@@ -344,6 +387,8 @@ export interface GameState {
   scenario: ScenarioState | null;
   /** Modo libre: dinero ilimitado, todo desbloqueado, sin bancarrota ni logros. */
   sandbox: boolean;
+  /** Basura y salud (fase 14): la basura se acumula y los vecinos enferman. Lo activa el menú, no los tests. */
+  sanitation: boolean;
   /** Primeros pasos en curso (null = sin guía). */
   tutorial: TutorialState | null;
   incidents: Incidents;
@@ -377,6 +422,8 @@ export interface NewGameOptions {
   incidents?: number;
   /** Elecciones cada ELECTION_YEARS años (no en el modo libre). */
   elections?: boolean;
+  /** Basura y salud (de serie no: los tests y el balance no tienen sorpresas). */
+  sanitation?: boolean;
 }
 
 export const newFunding = (): Funding => ({
@@ -386,6 +433,7 @@ export const newFunding = (): Funding => ({
   education: FUNDING_DEFAULT,
   park: FUNDING_DEFAULT,
   transit: FUNDING_DEFAULT,
+  waste: FUNDING_DEFAULT,
 });
 
 export const newProgress =(): Progress => ({ peakPopulation: 0, rank: 0, achievements: [], monthsPositive: 0, loansClosed: 0, plotsBought: 0 });
@@ -413,6 +461,7 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       waterPipe: new Uint8Array(size),
       fire: new Uint8Array(size),
       metro: new Uint8Array(size),
+      garbage: new Float32Array(size),
     },
     layers: {
       roadAccess: new Uint8Array(size).fill(NO_ACCESS),
@@ -437,6 +486,9 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       transitCoverage: new Uint8Array(size),
       ridership: new Map(),
       transitStops: new Map(),
+      health: new Float32Array(size),
+      sick: new Float32Array(size),
+      wasteFacilities: new Map(),
     },
     buildings: new Map(),
     nextBuildingId: 1,
@@ -462,11 +514,14 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       happiness: 50,
       traffic: { trips: 0, congestedShare: 0, avgCommute: 0 },
       transit: newTransitStats(),
+      garbage: newGarbageStats(),
+      health: newHealthStats(),
     },
     progress: newProgress(),
     land: null,
     scenario: null,
     sandbox: !!opts.sandbox,
+    sanitation: !!opts.sanitation,
     tutorial: opts.tutorial ? { step: 0 } : null,
     incidents: newIncidents(opts.incidents ?? 0),
     agora: newAgora(seed, !!opts.elections && !opts.sandbox),

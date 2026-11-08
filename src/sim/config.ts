@@ -179,6 +179,33 @@ export const METRO_TUNNEL_UPKEEP = 0.5;
 /** Demanda que trae una estación de tren activa: visitantes para el comercio y mercancías para la industria. */
 export const TRAIN_DEMAND: Partial<Record<ZoneType, number>> = { C: 0.03, I: 0.06 };
 
+// Basura y salud (fase 14). Solo funcionan en partidas con `sanitation` (las del menú; no en tests ni balance).
+/** Basura que produce al día cada habitante (R) o trabajador (C/I), en unidades de recogida. */
+export const GARBAGE_PER_OCCUPANT: Record<ZoneType, number> = { R: 0.02, C: 0.015, I: 0.04 };
+/**
+ * Basura acumulada (escala 0-100) que suma cada día un lote sin recogida por cada unidad que produce:
+ * una casa tarda casi un año en llenarse de basura y una torre, unos días.
+ */
+export const GARBAGE_BUILDUP = 4;
+/** La que se quita cada día un lote con recogida. */
+export const GARBAGE_CLEANUP = 10;
+/** Un poco de basura no molesta: por encima de esto, cada punto quita felicidad, valor del suelo y salud. */
+export const GARBAGE_TOLERANCE = 20;
+export const GARBAGE_HAPPINESS = 0.15;
+export const GARBAGE_LAND_VALUE = 0.2;
+/** Salud de los vecinos (0-100): base + cobertura sanitaria − contaminación − basura. */
+export const HEALTH_BASE = 60;
+export const HEALTH_COVERAGE = 0.4;
+export const HEALTH_POLLUTION = 0.6;
+export const HEALTH_GARBAGE = 0.4;
+/** Por debajo de esta salud hay enfermos; con salud 0, enferma esta fracción de los vecinos. */
+export const HEALTH_SICK = 45;
+export const SICK_MAX = 0.2;
+/** Felicidad que quita estar enfermo (multiplicada por la fracción de enfermos del lote)... */
+export const SICK_HAPPINESS = 15;
+/** ...y la que quita además no encontrar cama en una clínica u hospital. */
+export const UNTREATED_HAPPINESS = 20;
+
 export const DAYS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const START_YEAR = 2000;

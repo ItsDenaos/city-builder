@@ -39,5 +39,8 @@ export const effectTaxIncome = (state: GameState, zone: ZoneType) =>
 /** Multiplicador del crimen de la ciudad (ordenanzas). */
 export const effectCrime = (state: GameState) => activeOrdinances(state).reduce((m, o) => m * (o.crime ?? 1), 1);
 
+/** Multiplicador de la basura que produce la ciudad (ordenanzas). */
+export const effectGarbage = (state: GameState) => activeOrdinances(state).reduce((m, o) => m * (o.garbage ?? 1), 1);
+
 /** Multiplicador de la contaminación de la industria (ordenanzas). */
 export const effectIndustryPollution = (state: GameState) => activeOrdinances(state).reduce((m, o) => m * (o.industryPollution ?? 1), 1);

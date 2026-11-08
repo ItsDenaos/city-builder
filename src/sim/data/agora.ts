@@ -155,10 +155,22 @@ export const TOPICS: readonly TopicDef[] = [
     petition: { title: (b) => `Agua corriente en ${b}`, months: 3, goal: (s, i) => yes('Agua en el barrio', L(s).watered[i] === 1) },
   },
   {
+    id: 'basura', tone: 'queja', speaker: 'vecino',
+    detect: (s, i) => s.sanitation && s.map.garbage[i] >= 40,
+    lines: ['La basura se amontona en la acera.', 'Hace semanas que no pasa el camión de la basura.', 'Huele a basura en todo el portal.'],
+    petition: { title: (b) => `Recogida de basura en ${b}`, months: 3, goal: (s, i) => atMost('Basura acumulada', s.map.garbage[i], 10) },
+  },
+  {
     id: 'humo', tone: 'queja', speaker: 'vecino',
     detect: (s, i) => L(s).pollution[i] > 35,
     lines: ['El humo de las fábricas no deja respirar.', 'Huele a fábrica todo el día.', 'Tiendo la ropa y sale gris.'],
     petition: { title: (b) => `Aire limpio en ${b}`, months: 6, goal: (s, i) => atMost('Contaminación', L(s).pollution[i], 15) },
+  },
+  {
+    id: 'enfermos', tone: 'queja', speaker: 'vecino',
+    detect: (s, i) => L(s).sick[i] >= 0.05,
+    lines: ['Media calle está con gripe.', 'En el centro de salud no dan abasto.', 'Mi hijo lleva una semana enfermo.'],
+    petition: { title: (b) => `Más salud para ${b}`, months: 6, goal: (s, i) => atLeast('Salud de los vecinos', L(s).health[i], 50) },
   },
   {
     id: 'crimen', tone: 'queja', speaker: 'vecino',
@@ -248,6 +260,11 @@ export const TOPICS: readonly TopicDef[] = [
       return map.lotOccupants[i] < getZoneDefByCode(map.zoneType[i], map.zoneDensity[i]).capacity[map.lotLevel[i] - 1];
     },
     lines: ['No encontramos trabajadores.', 'Tenemos puestos vacantes y nadie para cubrirlos.'],
+  },
+  {
+    id: 'basura-negocio', tone: 'queja', speaker: 'negocio',
+    detect: (s, i) => s.sanitation && s.map.garbage[i] >= 50,
+    lines: ['Los clientes no entran con este olor.', 'Se nos amontonan las bolsas en la puerta.'],
   },
   {
     id: 'camiones', tone: 'queja', speaker: 'negocio',

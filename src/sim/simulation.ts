@@ -7,6 +7,7 @@ import { settleMonth } from './systems/economy';
 import { recordHistory } from './systems/history';
 import { growLots } from './systems/growth';
 import { updateIncidents } from './systems/incidents';
+import { collectGarbage } from './systems/garbage';
 import { computeInfluence } from './systems/influence';
 import { updateProgress } from './systems/progress';
 import { advanceTime } from './systems/time';
@@ -23,7 +24,8 @@ const SYSTEMS: System[] = [
   computeWater, // después de la electricidad: las bombas la necesitan
   computeStats,
   computeTraffic, // necesita la ocupación de los lotes
-  computeInfluence, // necesita el empleo y los trayectos para la felicidad
+  collectGarbage, // necesita el acceso y la electricidad de las instalaciones
+  computeInfluence, // necesita el empleo, los trayectos y la basura para la felicidad (y calcula la salud)
   updateDemand,
   growLots,
   updateIncidents, // incendios (necesitan la cobertura de bomberos), averías y eventos

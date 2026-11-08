@@ -2,6 +2,7 @@ import { type TransitMode, getBuildingDef } from '../sim/data/buildings';
 import { ROAD_BY_CODE } from '../sim/data/roads';
 import { DENSITY_BY_CODE, DENSITY_LABEL, ZONE_BY_CODE, ZONE_CODE, ZONE_TYPE_LABEL, getZoneDefByCode } from '../sim/data/zones';
 import { hasRoadAccess } from '../sim/systems/access';
+import { facilityProblem } from '../sim/systems/garbage';
 import { stopProblem } from '../sim/systems/transit';
 import { type BuildingInstance, type GameState, NO_BUILDING, inBounds, tileIndex } from '../sim/state';
 import { type Point, TERRAIN_WATER } from '../sim/types';
@@ -109,7 +110,7 @@ export function describeTile(state: GameState, p: Point): TileInfo | null {
     const b = state.buildings.get(id);
     const def = b && getBuildingDef(b.defId);
     if (b && def) {
-      kicker = { power: 'Electricidad', water: 'Agua', services: 'Servicio público', parks: 'Parque', transport: 'Transporte' }[def.category];
+      kicker = { power: 'Electricidad', water: 'Agua', services: 'Servicio público', parks: 'Parque', transport: 'Transporte', waste: 'Residuos' }[def.category];
       title = def.name;
       if (b.outage) rows.push({ label: 'Avería', value: `Al 40 % durante ${b.outage} ${b.outage === 1 ? 'día' : 'días'} más`, tone: 'negative' });
       rows.push({ label: 'Mantenimiento', value: `${formatMoney(def.upkeep)} / mes` });
@@ -122,13 +123,33 @@ export function describeTile(state: GameState, p: Point): TileInfo | null {
         const problem = stopProblem(state, b);
         rows.push(problem ? { label: 'Servicio', value: problem, tone: 'negative' } : stopRiders(state, b, def.transit.radius), { label: 'Radio a pie', value: `${def.transit.radius} casillas` });
       }
+      if (def.garbage) {
+        const problem = state.sanitation ? facilityProblem(state, b) : 'Esta partida no tiene basura';
+        const today = layers.wasteFacilities.get(b.id);
+        rows.push(
+          problem
+            ? { label: 'Recogida', value: problem, tone: 'negative' }
+            : { label: 'Recogida', value: today ? `${n(today.collected)} / ${n(today.capacity)} al día` : `hasta ${n(def.garbage.collect)} al día` },
+          { label: 'Radio de los camiones', value: `${def.garbage.radius} casillas` },
+        );
+        if (def.garbage.storage) {
+          const full = ((b.stored ?? 0) / def.garbage.storage) * 100;
+          rows.push({ label: 'Ocupado', value: `${Math.min(100, Math.round(full))} %`, tone: full >= 100 ? 'negative' : full >= 90 ? 'warning' : undefined });
+        }
+      }
+      if (def.beds) rows.push({ label: 'Camas', value: n(def.beds * (state.economy.funding.health / 100)) });
       if (def.capacity?.jobs) rows.push({ label: 'Empleos', value: n(def.capacity.jobs) });
       rows.push({ label: 'Electricidad', ...yesNo(layers.powered[i]) });
     }
   }
 
   const meters: TileInfo['meters'] = [];
-  if (zone === 'R' && map.lotLevel[i]) meters.push({ label: 'Felicidad', value: layers.happiness[i], higherIsBetter: true });
+  if (zone === 'R' && map.lotLevel[i]) {
+    meters.push({ label: 'Felicidad', value: layers.happiness[i], higherIsBetter: true }, { label: 'Salud', value: layers.health[i], higherIsBetter: true });
+    const sick = layers.sick[i] * map.lotOccupants[i];
+    if (sick >= 0.5) rows.push({ label: 'Enfermos', value: n(sick), tone: 'warning' });
+  }
+  if (state.sanitation && map.lotLevel[i]) meters.push({ label: 'Basura', value: map.garbage[i], higherIsBetter: false });
   if (map.terrain[i] !== TERRAIN_WATER) {
     meters.push(
       { label: 'Valor del suelo', value: layers.landValue[i], higherIsBetter: true },
@@ -136,7 +157,7 @@ export function describeTile(state: GameState, p: Point): TileInfo | null {
       { label: 'Crimen', value: layers.crime[i], higherIsBetter: false },
       { label: 'Policía', value: layers.coverage.police[i], higherIsBetter: true },
       { label: 'Bomberos', value: layers.coverage.fire[i], higherIsBetter: true },
-      { label: 'Salud', value: layers.coverage.health[i], higherIsBetter: true },
+      { label: 'Sanidad', value: layers.coverage.health[i], higherIsBetter: true },
       { label: 'Educación', value: layers.coverage.education[i], higherIsBetter: true },
       { label: 'Parques', value: layers.coverage.park[i], higherIsBetter: true },
     );

@@ -273,7 +273,7 @@ describe('guardado de la fase 16', () => {
     expect(loaded.map.metro.every((v) => v === 0)).toBe(true);
     expect(loaded.economy.funding.transit).toBe(100);
     expect(loaded.stats.transit.riders).toBe(0);
-    expect(SAVE_VERSION).toBe(5);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(5);
   });
 
   it('el historial de partidas antiguas no tiene reparto modal y no rompe nada', () => {

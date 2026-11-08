@@ -13,7 +13,7 @@ import type { Density, SimEvent, ZoneType } from './types';
  * Jugador automático. Sirve para medir el balance (balance/, tests/balance.test.ts) y para
  * levantar la ciudad de demostración que se ve detrás del menú principal: construye una ciudad en manzanas de 4×4
  * (calles cada 5 casillas, con tubería debajo), zonifica según la demanda, añade centrales,
- * agua y servicios cuando hacen falta, y pide préstamos si se queda sin dinero.
+ * agua, recogida de basura y servicios cuando hacen falta, y pide préstamos si se queda sin dinero.
  * No pretende jugar bien, sino como un jugador razonable y predecible.
  */
 
@@ -24,7 +24,7 @@ const LOW_COVERAGE = 40;
 const ZONE_DEMAND = 0.05; // la demanda a largo plazo ronda 0,1
 const MIN_FREE_LOTS = 8;
 
-type BlockUse = 'R' | 'C' | 'I' | 'power' | 'water' | 'civic' | 'school';
+type BlockUse = 'R' | 'C' | 'I' | 'power' | 'water' | 'civic' | 'school' | 'waste';
 
 interface Block {
   bx: number;
@@ -142,8 +142,11 @@ export class AutoPlayer {
     return true;
   }
 
-  /** Manzana libre junto a otra ya usada (o la central), con preferencia de zona por tipo. */
-  private pickBlock(use: BlockUse): Block | null {
+  /**
+   * Manzana libre junto a otra ya usada (o la central), con preferencia de zona por tipo.
+   * Con `near` (en manzanas), la más cercana a ese punto en vez de al centro.
+   */
+  private pickBlock(use: BlockUse, near?: { bx: number; by: number }): Block | null {
     const candidates: { bx: number; by: number; score: number }[] = [];
     const used = [...this.blocks.values()];
     const seeds = used.length ? used : [{ bx: this.cbx, by: this.cby }];
@@ -155,10 +158,10 @@ export class AutoPlayer {
         const k = this.key(bx, by);
         if (seen.has(k) || !this.free(bx, by)) continue;
         seen.add(k);
-        let score = Math.hypot(bx - this.cbx, by - this.cby);
+        let score = near ? Math.hypot(bx - near.bx, by - near.by) : Math.hypot(bx - this.cbx, by - this.cby);
         // Industria y centrales al este, viviendas al oeste: así la contaminación queda lejos
         const east = bx - this.cbx;
-        if ((use === 'I' || use === 'power') && east < 2) score += 20;
+        if ((use === 'I' || use === 'power' || (use === 'waste' && !near)) && east < 2) score += 20;
         if (use === 'R' && east > 1) score += 20;
         candidates.push({ bx, by, score });
       }
@@ -200,6 +203,7 @@ export class AutoPlayer {
     }
     this.ensurePower();
     this.ensureWater();
+    this.ensureGarbage();
     if (this.opts.services !== false) this.ensureServices();
     for (const z of ['R', 'C', 'I'] as const) this.ensureZone(z);
   }
@@ -259,6 +263,32 @@ export class AutoPlayer {
       const spot = this.freeSpot(block);
       if (spot) this.cmd({ type: 'placeBuilding', defId: 'water_tower', at: spot });
     }
+  }
+
+  /** Basura (solo en partidas con basura y salud): recogida con un 20 % de margen sobre lo que se produce. */
+  private ensureGarbage(): void {
+    const s = this.s;
+    if (!s.sanitation || s.stats.population < 50) return;
+    const g = s.stats.garbage;
+    if (g.capacity >= g.produced * 1.2 && g.dirtyShare < 0.05) return;
+    // Falta capacidad: una incineradora si ya se puede, o un vertedero. Si sobra capacidad pero los camiones
+    // no llegan a algún barrio, la instalación nueva va junto a la basura acumulada (reciclaje si se puede: contamina poco)
+    const short = g.capacity < g.produced * 1.2;
+    const affordable = (id: string) => {
+      const def = getBuildingDef(id)!;
+      return isUnlocked(s, def.unlockAtPopulation) && this.canSpend(def.cost + 1_000) && this.canAffordUpkeep(def.upkeep);
+    };
+    // El vertedero es una necesidad, como el agua: se construye aunque apriete el presupuesto
+    const preferred = short ? 'incinerator' : 'recycling_center';
+    const id = affordable(preferred) ? preferred : this.canSpend(getBuildingDef('landfill')!.cost) ? 'landfill' : null;
+    if (!id) return;
+    let dirtiest = -1;
+    if (!short) for (let i = 0; i < s.map.garbage.length; i++) if (dirtiest < 0 || s.map.garbage[i] > s.map.garbage[dirtiest]) dirtiest = i;
+    const near = dirtiest >= 0 ? { bx: Math.floor((dirtiest % s.map.width) / SPACING), by: Math.floor(dirtiest / s.map.width / SPACING) } : undefined;
+    const b = this.pickBlock('waste', near);
+    if (!b) return;
+    this.claim(b);
+    this.cmd({ type: 'placeBuilding', defId: id, at: this.inner(b) }, getBuildingDef(id)!.name.toLowerCase());
   }
 
   private ensureServices(): void {

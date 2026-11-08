@@ -148,6 +148,7 @@ const menu = new Menu({
         tutorial: s.tutorial,
         incidents: s.incidents,
         elections: s.elections && !s.sandbox,
+        sanitation: true,
       }),
     ),
   startScenario: (id) => setState(createScenario(id)),
@@ -294,6 +295,7 @@ function onEvents(events: SimEvent[]): void {
       hud.notify(e.destroyed ? `Incendio apagado: ${e.destroyed} ${e.destroyed === 1 ? 'edificio destruido' : 'edificios destruidos'}` : 'Incendio apagado sin daños', e.destroyed ? 'warning' : 'info');
     } else if (e.type === 'effectEnded') hud.notify(`Termina: ${e.label}`);
     else if (e.type === 'repaired') hud.notify(`${e.name}: reparada`);
+    else if (e.type === 'landfillFull') hud.notify(`${e.name} lleno: ya no recoge basura`, 'warning', { x: e.x, y: e.y });
     else if (e.type === 'petitionNew') hud.notify(`Nueva petición vecinal: ${e.title}`, 'info', { x: e.x, y: e.y });
     else if (e.type === 'petition') hud.notify(e.done ? `Petición cumplida: ${e.title}` : `Petición sin cumplir: ${e.title}`, e.done ? 'unlock' : 'warning');
     else if (e.type === 'electionSoon') {

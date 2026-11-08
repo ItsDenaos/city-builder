@@ -1,6 +1,6 @@
 import { rankFor } from './data/progression';
 import { refreshDerived } from './simulation';
-import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newFunding, newIncidents, newProgress } from './state';
+import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newFunding, newGarbageStats, newHealthStats, newIncidents, newProgress, newTransitStats } from './state';
 
 /**
  * Súbela si cambia el formato y añade la migración en deserialize.
@@ -8,11 +8,12 @@ import { type BuildingInstance, type GameMap, type GameState, createGame, newAgo
  * v3: modo libre, primeros pasos, eventos y desastres (capa de incendios), Ágora y elecciones.
  * v4: financiación por departamento, ordenanzas y distritos con nombre.
  * v5: transporte público (capa de túneles de metro y financiación del transporte).
+ * v6: basura y salud (capa de basura, carga de los vertederos y financiación de residuos).
  */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 // Capas del mapa que se guardan; las derivadas (acceso, redes, influencia, tráfico) se recalculan al cargar.
-const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro'] as const;
+const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro', 'garbage'] as const;
 type MapLayer = (typeof MAP_LAYERS)[number];
 
 export interface SaveMeta {
@@ -103,6 +104,11 @@ export function deserialize(data: unknown): GameState {
   state.economy.funding = { ...newFunding(), ...state.economy.funding };
   state.economy.ordinances ??= [];
   state.districts ??= [];
+  // Partidas v1-v5: sin estadísticas de basura y salud; la basura y la salud se activan (son parte del juego)
+  state.stats.garbage = { ...newGarbageStats(), ...state.stats.garbage };
+  state.stats.health = { ...newHealthStats(), ...state.stats.health };
+  state.stats.transit = { ...newTransitStats(), ...state.stats.transit };
+  state.sanitation = (rest as Partial<GameState>).sanitation ?? true;
   state.nextDistrictId ??= 1;
   state.buildings = new Map(buildings.map((b) => [b.id, { ...b }]));
   const traffic = new Float32Array(savedMap.width * savedMap.height);

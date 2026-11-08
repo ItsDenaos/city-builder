@@ -7,12 +7,19 @@ import { taxDemandPenalty } from '../src/sim/systems/demand';
  * Objetivos de balance, comprobados con el jugador automático (balance/bot.ts).
  * Si un cambio de números rompe alguno, revisa el informe completo con `npm run balance`.
  */
-function play(years: number, opts: BotOptions & { money?: number } = {}) {
-  const s = createGame({ width: 128, height: 128, flat: true, seed: 3, money: opts.money });
+/**
+ * Juega `years` años con el bot. Cede el hilo cada mes: si no, una simulación tan larga bloquea el proceso
+ * de Vitest y este da un error de tiempo («Timeout calling onTaskUpdate») aunque los tests pasen.
+ */
+async function play(years: number, opts: BotOptions & { money?: number; sanitation?: boolean } = {}) {
+  const s = createGame({ width: 128, height: 128, flat: true, seed: 3, money: opts.money, sanitation: opts.sanitation });
   const bot = new Bot(s, opts);
   const yearly: { pop: number; money: number; net: number }[] = [];
   for (let y = 0; y < years && !s.economy.bankrupt; y++) {
-    bot.run(360);
+    for (let m = 0; m < 12; m++) {
+      bot.run(30);
+      await new Promise((r) => setTimeout(r));
+    }
     yearly.push({ pop: s.stats.population, money: s.economy.money, net: s.economy.lastMonth?.net ?? 0 });
   }
   return { s, yearly };
@@ -20,8 +27,8 @@ function play(years: number, opts: BotOptions & { money?: number } = {}) {
 
 describe('balance', () => {
   let normal: { s: GameState; yearly: { pop: number; money: number; net: number }[] };
-  beforeAll(() => {
-    normal = play(8);
+  beforeAll(async () => {
+    normal = await play(8);
   }, 120_000);
 
   it('una ciudad sensata nunca quiebra y gana dinero desde el primer año', () => {
@@ -41,14 +48,23 @@ describe('balance', () => {
     expect(normal.s.map.lotLevel.some((v) => v >= 2)).toBe(true);
   });
 
-  it('los servicios compensan: sin ellos la ciudad crece bastante menos', () => {
-    const bare = play(8, { services: false });
+  it('los servicios compensan: sin ellos la ciudad crece bastante menos', async () => {
+    const bare = await play(8, { services: false });
     expect(bare.s.stats.population).toBeLessThan(normal.s.stats.population * 0.7);
     expect(bare.s.map.lotLevel.some((v) => v >= 2)).toBe(false);
   }, 120_000);
 
-  it('subir mucho los impuestos frena el crecimiento', () => {
-    const high = play(8, { taxes: { R: 14, C: 14, I: 14 } });
+  it('con basura y salud sigue siendo jugable: no quiebra, crece y recoge su basura', async () => {
+    const san = await play(8, { sanitation: true });
+    expect(san.s.economy.bankrupt).toBe(false);
+    expect(san.yearly.every((y) => y.money > 0)).toBe(true);
+    expect(san.s.stats.population).toBeGreaterThan(normal.s.stats.population * 0.75);
+    expect(san.s.stats.garbage.dirtyShare).toBeLessThan(0.1);
+    expect(san.s.stats.health.average).toBeGreaterThan(50);
+  }, 120_000);
+
+  it('subir mucho los impuestos frena el crecimiento', async () => {
+    const high = await play(8, { taxes: { R: 14, C: 14, I: 14 } });
     expect(high.s.stats.population).toBeLessThan(normal.s.stats.population / 2);
   }, 120_000);
 

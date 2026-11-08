@@ -1,6 +1,8 @@
 import { effectCrime, effectHappiness, effectIndustryPollution } from '../effects';
 import {
   FUNDING_RADIUS_GAIN,
+  GARBAGE_HAPPINESS,
+  GARBAGE_LAND_VALUE,
   CRIME_LAND_VALUE,
   CRIME_PER_OCCUPANT,
   COMMUTE_HAPPINESS,
@@ -27,6 +29,8 @@ import { type ServiceType, getBuildingDef } from '../data/buildings';
 import { ZONE_CODE } from '../data/zones';
 import { type GameMap, type GameState, tileIndex } from '../state';
 import { TERRAIN_WATER } from '../types';
+import { excessGarbage } from './garbage';
+import { computeHealth, sicknessPenalty } from './health';
 import { roadCapacity } from './traffic';
 
 export const SERVICES: readonly ServiceType[] = ['police', 'fire', 'health', 'education', 'park'];
@@ -87,7 +91,8 @@ function waterDistance(map: GameMap, max: number): Uint8Array {
  * 2. Contaminación: industria, tráfico y efectos de edificios (central de carbón...).
  * 3. Crimen: crece con la densidad de habitantes y trabajadores, lo reduce la policía y los parques.
  * 4. Valor del suelo: base + agua cercana + servicios + parques − contaminación − crimen.
- * 5. Felicidad de cada lote residencial y media de la ciudad.
+ * 5. Salud de los vecinos (health.ts) y felicidad de cada lote residencial y media de la ciudad.
+ *    La basura acumulada (fase 14) resta valor del suelo y felicidad.
  */
 export function computeInfluence(state: GameState): void {
   const { map, layers, stats, economy } = state;
@@ -152,9 +157,12 @@ export function computeInfluence(state: GameState): void {
     const services = (coverage.police[i] + coverage.fire[i] + coverage.health[i] + coverage.education[i]) * SERVICE_LAND_VALUE;
     landValue[i] = clamp100(
       LAND_VALUE_BASE + Math.min(waterfront, WATERFRONT_BONUS) + services + landValue[i] -
-        pollution[i] * POLLUTION_LAND_VALUE - crime[i] * CRIME_LAND_VALUE,
+        pollution[i] * POLLUTION_LAND_VALUE - crime[i] * CRIME_LAND_VALUE - excessGarbage(map.garbage[i]) * GARBAGE_LAND_VALUE,
     );
   }
+
+  // Salud de los vecinos y enfermos (fase 14): necesita la cobertura y la contaminación
+  computeHealth(state);
 
   // 5. Felicidad
   const jobCapacity = stats.jobs.C + stats.jobs.I + stats.jobs.services;
@@ -184,7 +192,9 @@ export function computeInfluence(state: GameState): void {
         crime[i] * 0.4 -
         missingJobs * UNEMPLOYMENT_HAPPINESS -
         taxPenalty -
-        commutePenalty(i) +
+        commutePenalty(i) -
+        excessGarbage(map.garbage[i]) * GARBAGE_HAPPINESS -
+        sicknessPenalty(state, i) +
         events,
     );
     happiness[i] = h;

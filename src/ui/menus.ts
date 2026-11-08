@@ -29,7 +29,7 @@ export interface MenuCategory {
   items: MenuItem[];
 }
 
-const CATEGORY_ICONS: Record<string, IconName> = { power: 'pylon', water: 'drop', services: 'services', parks: 'park', transport: 'bus' };
+const CATEGORY_ICONS: Record<string, IconName> = { power: 'pylon', water: 'drop', services: 'services', parks: 'park', transport: 'bus', waste: 'truck' };
 
 export const formatMoney = (n: number) => `$${Math.round(n).toLocaleString('es-ES')}`;
 

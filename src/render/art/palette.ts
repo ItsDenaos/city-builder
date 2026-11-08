@@ -74,6 +74,7 @@ export const WORLD = {
   tunnel: DATA.transit,
   transitStop: 'rgba(217, 137, 91, 0.85)',
   transitCovered: 'rgba(217, 137, 91, 0.2)',
+  wasteFacility: 'rgba(166, 138, 91, 0.9)',
 
   // Emblemas de servicios sobre el tejado
   emblem: BRAND.gold,
@@ -134,6 +135,13 @@ export const CIVIC = {
   stationWall: '#E9E3D6',
   stationRoof: '#6E6585',
   stationTower: '#D8D0C0',
+  // Residuos
+  landfillGround: '#B9AC8E',
+  landfillMound: '#9C8C6C',
+  recyclingWall: '#E4E4DC',
+  recyclingRoof: '#6F8F6A',
+  incineratorWall: '#C9C1B8',
+  incineratorRoof: '#7A6F68',
   smoke: '225, 225, 222',
 } as const;
 

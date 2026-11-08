@@ -25,6 +25,8 @@ export interface OrdinanceDef {
   demand?: Partial<Record<ZoneType, number>>;
   /** Multiplicador de la recaudación por tipo de zona. */
   taxIncome?: Partial<Record<ZoneType, number>>;
+  /** Multiplicador de la basura que produce la ciudad (fase 14). */
+  garbage?: number;
 }
 
 export const ORDINANCES: readonly OrdinanceDef[] = [
@@ -52,6 +54,11 @@ export const ORDINANCES: readonly OrdinanceDef[] = [
     id: 'industrial_park', name: 'Fomento industrial', cost: 150, unlockAtPopulation: 1_500,
     summary: 'Suelo barato para fábricas: más demanda industrial (+0,05), pero a los vecinos no les gusta (−1 de felicidad).',
     demand: { I: 0.05 }, happiness: -1,
+  },
+  {
+    id: 'recycling_program', name: 'Recogida selectiva', cost: 120, unlockAtPopulation: 800,
+    summary: 'Contenedores por colores en cada calle: la ciudad produce un 25 % menos de basura.',
+    garbage: 0.75,
   },
   {
     id: 'city_festivals', name: 'Fiestas populares', cost: 250, unlockAtPopulation: 2_000,

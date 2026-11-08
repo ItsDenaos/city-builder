@@ -63,6 +63,8 @@ export const DATA = {
   unemployment: UI.negative,
   commute: UI.info,
   transit: '#D9895B',
+  garbage: '#A68A5B',
+  wellness: '#8CC7A8',
 } as const;
 
 export const FONTS = {
