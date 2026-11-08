@@ -9,7 +9,7 @@ import {
 import { getBuildingDef } from '../data/buildings';
 import { ROAD_BY_CODE } from '../data/roads';
 import { ZONE_BY_CODE } from '../data/zones';
-import { effectTaxIncome } from '../effects';
+import { activeOrdinances, effectTaxIncome } from '../effects';
 import type { Budget, GameState, Loan } from '../state';
 import type { SimEvent } from '../types';
 
@@ -52,16 +52,22 @@ export function estimateBudget(state: GameState): Budget {
     water: 0,
     services: 0,
     parks: 0,
+    ordinances: activeOrdinances(state).reduce((sum, o) => sum + o.cost, 0),
     loans: economy.loans.reduce((sum, l) => sum + dueThisMonth(l), 0),
   };
+  const departments = { police: 0, fire: 0, health: 0, education: 0, park: 0 };
   for (const b of state.buildings.values()) {
     const def = getBuildingDef(b.defId);
-    if (def) expenses[def.category] += def.upkeep;
+    if (!def) continue;
+    // La financiación del departamento escala el mantenimiento de sus edificios
+    const upkeep = def.upkeep * (def.coverage ? economy.funding[def.coverage.service] / 100 : 1);
+    expenses[def.category] += upkeep;
+    if (def.coverage) departments[def.coverage.service] += upkeep;
   }
 
   const totalIncome = income.R + income.C + income.I;
   const totalExpenses = Object.values(expenses).reduce((a, b) => a + b, 0);
-  return { income, expenses, totalIncome, totalExpenses, net: totalIncome - totalExpenses };
+  return { income, expenses, departments, totalIncome, totalExpenses, net: totalIncome - totalExpenses };
 }
 
 /** Paga una cuota de cada préstamo; quita los que quedan saldados. */

@@ -15,7 +15,9 @@ export type Tool =
   | { kind: 'bulldoze' }
   | { kind: 'building'; defId: string }
   /** Comprar parcelas de terreno. */
-  | { kind: 'land' };
+  | { kind: 'land' }
+  /** Delimitar un distrito con nombre. */
+  | { kind: 'district' };
 
 export const SELECT_TOOL: Tool = { kind: 'select' };
 
@@ -72,6 +74,8 @@ export function toolCommand(tool: Tool, start: Point, end: Point, opts: ToolOpti
     }
     case 'land':
       return { type: 'buyPlot', at: end };
+    case 'district':
+      return { type: 'createDistrict', rect: normalizeRect(start, end) };
   }
 }
 
@@ -89,6 +93,7 @@ export function toolPreviewTiles(tool: Tool, start: Point | null, hover: Point):
     case 'zone':
     case 'dezone':
     case 'bulldoze':
+    case 'district':
       return rectPoints(normalizeRect(from, hover));
     case 'building': {
       const def = getBuildingDef(tool.defId);

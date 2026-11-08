@@ -3,9 +3,15 @@ import {
   BULLDOZE_BUILDING_COST,
   BULLDOZE_LOT_COST,
   BULLDOZE_TILE_COST,
+  DISTRICT_NAME_MAX,
+  FUNDING_MAX,
+  FUNDING_MIN,
+  FUNDING_STEP,
   LOAN_AMOUNTS,
   LOAN_MONTHS,
+  MAX_DISTRICTS,
   MAX_LOANS,
+  MAX_ORDINANCES,
   PIPE_COST,
   POWER_LINE_COST,
   TAX_MAX,
@@ -13,8 +19,11 @@ import {
 } from './config';
 import { ROADS, ROAD_BY_CODE, type RoadKind } from './data/roads';
 import { DENSITY_CODE, ZONE_CODE, getZoneDef } from './data/zones';
-import { type BuildingDef, getBuildingDef } from './data/buildings';
+import { type BuildingDef, type ServiceType, getBuildingDef } from './data/buildings';
+import { autoNeighborhoodName } from './data/agora';
+import { DEPARTMENT_IDS } from './data/departments';
 import { getIncident } from './data/incidents';
+import { getOrdinance } from './data/ordinances';
 import { clipRect, gridPositions, normalizeRect, roadPath } from './geometry';
 import { nextPlotCost, ownsTile, plotAt, plotBlocker } from './land';
 import { loanPayment } from './systems/economy';
@@ -41,6 +50,14 @@ export type Command =
   | { type: 'bulldoze'; rect: Rect }
   | { type: 'setSpeed'; speed: Speed }
   | { type: 'setTaxRate'; zone: ZoneType; rate: number }
+  /** Financiación de un departamento, en % (múltiplo de FUNDING_STEP entre FUNDING_MIN y FUNDING_MAX). */
+  | { type: 'setFunding'; dept: ServiceType; value: number }
+  /** Activa o deroga una ordenanza. */
+  | { type: 'toggleOrdinance'; id: string }
+  /** Distrito con nombre sobre un rectángulo; sin `name` toma el del barrio donde cae. */
+  | { type: 'createDistrict'; rect: Rect; name?: string }
+  | { type: 'renameDistrict'; id: number; name: string }
+  | { type: 'removeDistrict'; id: number }
   | { type: 'takeLoan'; amount: number }
   | { type: 'repayLoan'; loanId: number }
   /** Comprar la parcela de terreno que contiene la casilla `at`. */
@@ -109,6 +126,16 @@ function plan(state: GameState, cmd: Command): Plan {
       return { result: ok(0, 0), apply: () => void (state.time.speed = cmd.speed) };
     case 'setTaxRate':
       return planTax(state, cmd.zone, cmd.rate);
+    case 'setFunding':
+      return planFunding(state, cmd.dept, cmd.value);
+    case 'toggleOrdinance':
+      return planOrdinance(state, cmd.id);
+    case 'createDistrict':
+      return planCreateDistrict(state, cmd.rect, cmd.name);
+    case 'renameDistrict':
+      return planRenameDistrict(state, cmd.id, cmd.name);
+    case 'removeDistrict':
+      return planRemoveDistrict(state, cmd.id);
     case 'takeLoan':
       return planLoan(state, cmd.amount);
     case 'repayLoan':
@@ -359,6 +386,70 @@ function planRemovePipe(state: GameState, rect: Rect): Plan {
 function planTax(state: GameState, zone: ZoneType, rate: number): Plan {
   if (!Number.isInteger(rate) || rate < TAX_MIN || rate > TAX_MAX) return fail(`El impuesto va de ${TAX_MIN}% a ${TAX_MAX}%`);
   return { result: ok(0, 1), apply: () => void (state.economy.taxes[zone] = rate) };
+}
+
+function planFunding(state: GameState, dept: ServiceType, value: number): Plan {
+  if (!DEPARTMENT_IDS.includes(dept)) return fail('Departamento desconocido');
+  if (!Number.isInteger(value) || value < FUNDING_MIN || value > FUNDING_MAX || value % FUNDING_STEP !== 0) {
+    return fail(`La financiación va del ${FUNDING_MIN} % al ${FUNDING_MAX} %, de ${FUNDING_STEP} en ${FUNDING_STEP}`);
+  }
+  return { result: ok(0, 1), apply: () => void (state.economy.funding[dept] = value) };
+}
+
+function planOrdinance(state: GameState, id: string): Plan {
+  const def = getOrdinance(id);
+  if (!def) return fail('Ordenanza desconocida');
+  const active = state.economy.ordinances;
+  if (active.includes(id)) return { result: ok(0, 1), apply: () => void (state.economy.ordinances = active.filter((o) => o !== id)) };
+  if (!isUnlocked(state, def.unlockAtPopulation)) return fail(`Se desbloquea con ${def.unlockAtPopulation.toLocaleString('es-ES')} habitantes`);
+  if (active.length >= MAX_ORDINANCES) return fail(`Como máximo ${MAX_ORDINANCES} ordenanzas a la vez`);
+  return { result: ok(0, 1), apply: () => void active.push(id) };
+}
+
+/** Nombre limpio de un distrito, o el motivo por el que no vale. */
+function districtName(state: GameState, raw: string, ignoreId?: number): { name: string } | { error: string } {
+  const name = raw.trim().replace(/\s+/g, ' ');
+  if (!name) return { error: 'El distrito necesita un nombre' };
+  if (name.length > DISTRICT_NAME_MAX) return { error: `El nombre admite hasta ${DISTRICT_NAME_MAX} letras` };
+  if (state.districts.some((d) => d.id !== ignoreId && d.name.toLowerCase() === name.toLowerCase())) return { error: 'Ya hay un distrito con ese nombre' };
+  return { name };
+}
+
+function planCreateDistrict(state: GameState, rect: Rect, requested?: string): Plan {
+  const { map } = state;
+  if (state.districts.length >= MAX_DISTRICTS) return fail(`Como máximo ${MAX_DISTRICTS} distritos`);
+  const r = clipRect(rect, map.width, map.height);
+  if (!r) return fail('Fuera del mapa');
+  if ((r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1) < 4) return fail('El distrito debe tener al menos 4 casillas');
+  let name = requested;
+  if (name === undefined) {
+    // Nombre por defecto: el del barrio del centro; si ya está cogido, «Distrito N»
+    const base = autoNeighborhoodName(state, Math.floor((r.x0 + r.x1) / 2), Math.floor((r.y0 + r.y1) / 2));
+    name = base;
+    for (let k = 2; state.districts.some((d) => d.name.toLowerCase() === name!.toLowerCase()); k++) name = `${base} ${k}`;
+    name = name.slice(0, DISTRICT_NAME_MAX);
+  }
+  const checked = districtName(state, name);
+  if ('error' in checked) return fail(checked.error);
+  return {
+    result: ok(0, 1),
+    apply: () => {
+      state.districts.push({ id: state.nextDistrictId++, name: checked.name, x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 });
+    },
+  };
+}
+
+function planRenameDistrict(state: GameState, id: number, raw: string): Plan {
+  const district = state.districts.find((d) => d.id === id);
+  if (!district) return fail('Distrito no encontrado');
+  const checked = districtName(state, raw, id);
+  if ('error' in checked) return fail(checked.error);
+  return { result: ok(0, 1), apply: () => void (district.name = checked.name) };
+}
+
+function planRemoveDistrict(state: GameState, id: number): Plan {
+  if (!state.districts.some((d) => d.id === id)) return fail('Distrito no encontrado');
+  return { result: ok(0, 1), apply: () => void (state.districts = state.districts.filter((d) => d.id !== id)) };
 }
 
 function planLoan(state: GameState, amount: number): Plan {

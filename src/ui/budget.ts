@@ -1,7 +1,23 @@
 import type { Command } from '../sim/commands';
-import { LOAN_AMOUNTS, LOAN_ANNUAL_RATE, LOAN_MONTHS, MAX_LOANS, TAX_MAX, TAX_MIN } from '../sim/config';
+import {
+  FUNDING_MAX,
+  FUNDING_MIN,
+  FUNDING_STEP,
+  LOAN_AMOUNTS,
+  LOAN_ANNUAL_RATE,
+  LOAN_MONTHS,
+  MAX_DISTRICTS,
+  MAX_LOANS,
+  MAX_ORDINANCES,
+  TAX_MAX,
+  TAX_MIN,
+} from '../sim/config';
+import { DEPARTMENTS } from '../sim/data/departments';
+import { ORDINANCES } from '../sim/data/ordinances';
 import { ZONE_TYPE_LABEL } from '../sim/data/zones';
+import { isUnlocked } from '../sim/state';
 import type { Budget, GameState } from '../sim/state';
+import { districtStats } from '../sim/systems/districts';
 import { estimateBudget, loanPayment } from '../sim/systems/economy';
 import { DATA, FONTS, UI } from '../theme';
 import { icon } from './icons';
@@ -14,6 +30,7 @@ const EXPENSE_LABELS: Record<keyof Budget['expenses'], string> = {
   water: 'Agua',
   services: 'Servicios',
   parks: 'Parques',
+  ordinances: 'Ordenanzas',
   loans: 'Préstamos',
 };
 const ZONE_DOT = { R: DATA.zoneR, C: DATA.zoneC, I: DATA.zoneI };
@@ -30,6 +47,7 @@ export class BudgetPanel {
   private chart = document.createElement('canvas');
   private lastHtml = '';
   private lastRefresh = 0;
+  private lastState: GameState | null = null;
 
   constructor(
     private run: (cmd: Command) => void,
@@ -60,6 +78,14 @@ export class BudgetPanel {
     // Un solo listener para todos los botones del panel (se regeneran con el contenido)
     this.body.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest('button');
+      if (b?.dataset.rename) {
+        const id = Number(b.dataset.rename);
+        const current = this.lastState?.districts.find((d) => d.id === id);
+        const name = current ? window.prompt('Nuevo nombre del distrito', current.name) : null;
+        if (name !== null) this.run({ type: 'renameDistrict', id, name });
+        this.lastRefresh = 0;
+        return;
+      }
       if (!b?.dataset.cmd) return;
       this.run(JSON.parse(b.dataset.cmd) as Command);
       this.lastRefresh = 0; // refrescar ya
@@ -78,6 +104,7 @@ export class BudgetPanel {
   update(state: GameState): void {
     if (!this.open || performance.now() - this.lastRefresh < REFRESH_MS) return;
     this.lastRefresh = performance.now();
+    this.lastState = state;
     const html = this.render(state);
     if (html !== this.lastHtml) {
       this.body.innerHTML = html;
@@ -136,9 +163,59 @@ export class BudgetPanel {
         `<button class="btn" ${cmd({ type: 'takeLoan', amount: a })} ${full ? 'disabled' : ''} data-tip="${esc(`${formatMoney(loanPayment(a))} al mes durante ${LOAN_MONTHS / 12} años`)}">${formatMoney(a)}</button>`,
     ).join('');
 
+    const funding = DEPARTMENTS.map((d) => {
+      const value = economy.funding[d.id];
+      const set = (v: number) => cmd({ type: 'setFunding', dept: d.id, value: v });
+      return `<div class="tax-row" data-tip="${esc(d.effect)}">
+        <span class="tax-zone">${d.label}</span>
+        <span class="stepper">
+          <button class="icon-btn" ${set(value - FUNDING_STEP)} ${value <= FUNDING_MIN ? 'disabled' : ''} aria-label="Bajar financiación de ${d.label.toLowerCase()}">${icon('minus', 14)}</button>
+          <span class="stepper-value num">${value} %</span>
+          <button class="icon-btn" ${set(value + FUNDING_STEP)} ${value >= FUNDING_MAX ? 'disabled' : ''} aria-label="Subir financiación de ${d.label.toLowerCase()}">${icon('plus', 14)}</button>
+        </span>
+        <span class="num tax-income">${formatMoney(est.departments[d.id])}</span>
+      </div>`;
+    }).join('');
+
+    const active = economy.ordinances.length;
+    const ordinances = ORDINANCES.map((o) => {
+      const on = economy.ordinances.includes(o.id);
+      const locked = !on && !isUnlocked(state, o.unlockAtPopulation);
+      const full = !on && active >= MAX_ORDINANCES;
+      const note = locked ? `Con ${o.unlockAtPopulation.toLocaleString('es-ES')} hab.` : `${formatMoney(o.cost)}/mes`;
+      return `<div class="ordinance ${on ? 'is-on' : ''}" data-tip="${esc(o.summary)}">
+        <span class="ordinance-text"><span>${o.name}</span><span class="muted num">${note}</span></span>
+        <button class="btn" ${cmd({ type: 'toggleOrdinance', id: o.id })} ${locked || full ? 'disabled' : ''}>${on ? 'Derogar' : 'Aprobar'}</button>
+      </div>`;
+    }).join('');
+
+    const districts = state.districts.length
+      ? state.districts
+          .map((d) => {
+            const s = districtStats(state, d);
+            return `<div class="district">
+              <div class="district-head"><span class="district-name">${esc(d.name)}</span>
+                <span class="district-actions">
+                  <button class="btn" data-rename="${d.id}" aria-label="Renombrar ${esc(d.name)}">Renombrar</button>
+                  <button class="icon-btn" ${cmd({ type: 'removeDistrict', id: d.id })} aria-label="Quitar ${esc(d.name)}" data-tip="Quitar distrito">${icon('close', 14)}</button>
+                </span></div>
+              <span class="muted num">${s.population.toLocaleString('es-ES')} hab. · ${s.workers.toLocaleString('es-ES')} empleos · felicidad ${s.population ? Math.round(s.happiness) : '—'}</span>
+              <span class="muted num">Contaminación ${Math.round(s.pollution)} · crimen ${Math.round(s.crime)}</span>
+            </div>`;
+          })
+          .join('')
+      : '<p class="muted">Sin distritos. Usa la herramienta «Distritos» de la barra inferior para delimitar y nombrar una zona.</p>';
+
     return `
       <div class="section-title"><span class="kicker">Impuestos</span><span class="kicker">Ingreso / mes</span></div>
       ${taxes}
+      <div class="section-title"><span class="kicker">Financiación</span><span class="kicker">Gasto / mes</span></div>
+      ${funding}
+      <p class="muted">Por debajo de 100 % la cobertura es más débil; por encima llega más lejos y cuesta más.</p>
+      <div class="section-title"><span class="kicker">Ordenanzas</span><span class="muted">${active} / ${MAX_ORDINANCES}</span></div>
+      ${ordinances}
+      <div class="section-title"><span class="kicker">Distritos</span><span class="muted">${state.districts.length} / ${MAX_DISTRICTS}</span></div>
+      ${districts}
       <div class="section-title"><span class="kicker">Gastos estimados / mes</span></div>
       <div>${expenses}<div class="kv is-total"><span>Balance estimado</span><span class="${toneOf(est.net)}">${signed(est.net)} / mes</span></div></div>
       <div class="section-title"><span class="kicker">Último mes</span></div>

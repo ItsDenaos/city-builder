@@ -29,6 +29,23 @@ const shuffled = new Map<number, string[]>();
 
 /** Nombre del barrio de una casilla: cada partida reparte los nombres a su manera, sin repetirlos. */
 export function neighborhoodName(state: GameState, x: number, y: number): string {
+  // Un distrito del jugador manda sobre el barrio automático (el último creado, si se solapan)
+  const district = districtAt(state, x, y);
+  if (district) return district.name;
+  return autoNeighborhoodName(state, x, y);
+}
+
+/** Distrito con nombre que contiene la casilla, si lo hay. */
+export function districtAt(state: GameState, x: number, y: number) {
+  for (let k = state.districts.length - 1; k >= 0; k--) {
+    const d = state.districts[k];
+    if (x >= d.x0 && x <= d.x1 && y >= d.y0 && y <= d.y1) return d;
+  }
+  return undefined;
+}
+
+/** Nombre del barrio automático (cuadrícula de NEIGHBORHOOD_SIZE), ignorando los distritos del jugador. */
+export function autoNeighborhoodName(state: GameState, x: number, y: number): string {
   let names = shuffled.get(state.seed);
   if (!names) {
     const rnd = mulberry32(state.seed ^ 0x5eed);

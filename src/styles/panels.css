@@ -431,3 +431,53 @@
   justify-content: center;
   margin-top: var(--space-2);
 }
+
+/* Ordenanzas y distritos (fase 13) */
+.ordinance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.ordinance-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.ordinance-text > span:first-child {
+  font-weight: 600;
+}
+
+.ordinance.is-on .ordinance-text > span:first-child {
+  color: var(--brand-gold);
+}
+
+.district {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ui-line);
+  font-size: 12px;
+}
+
+.district-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.district-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.district-actions {
+  display: flex;
+  gap: 4px;
+}

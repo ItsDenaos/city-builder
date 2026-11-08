@@ -368,6 +368,7 @@ function frame(now: number): void {
     overlay: toolOverlay(tool) ?? hud.overlay,
     grid: tool.kind !== 'select' && tool.kind !== 'land',
     landTool: tool.kind === 'land',
+    districts: tool.kind === 'district',
   };
   if (input.hover && tool.kind !== 'select' && !menu.isOpen) {
     const start = input.dragStart ?? input.hover;

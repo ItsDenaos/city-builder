@@ -1,13 +1,14 @@
 import { rankFor } from './data/progression';
 import { refreshDerived } from './simulation';
-import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newIncidents, newProgress } from './state';
+import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newFunding, newIncidents, newProgress } from './state';
 
 /**
  * Súbela si cambia el formato y añade la migración en deserialize.
  * v2: progreso con rango, logros y contadores; terreno por parcelas; escenarios.
  * v3: modo libre, primeros pasos, eventos y desastres (capa de incendios), Ágora y elecciones.
+ * v4: financiación por departamento, ordenanzas y distritos con nombre.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 // Capas del mapa que se guardan; las derivadas (acceso, redes, influencia, tráfico) se recalculan al cargar.
 const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire'] as const;
@@ -97,6 +98,11 @@ export function deserialize(data: unknown): GameState {
   state.tutorial ??= null;
   state.incidents = { ...newIncidents(0), ...(rest as Partial<GameState>).incidents };
   state.agora = { ...newAgora(state.seed, false), ...(rest as Partial<GameState>).agora };
+  // Partidas v1-v3: sin financiación por departamento, ordenanzas ni distritos
+  state.economy.funding = { ...newFunding(), ...state.economy.funding };
+  state.economy.ordinances ??= [];
+  state.districts ??= [];
+  state.nextDistrictId ??= 1;
   state.buildings = new Map(buildings.map((b) => [b.id, { ...b }]));
   const traffic = new Float32Array(savedMap.width * savedMap.height);
   fromBase64(savedMap.traffic, traffic);

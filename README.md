@@ -69,8 +69,8 @@ src/
     save.ts       serializar y restaurar partidas (las capas derivadas se recalculan)
     simulation.ts tick diario y lista de sistemas
     autoplayer.ts jugador automático (balance y ciudad de demostración)
-    systems/      un archivo por sistema (demanda, crecimiento, redes, economía, influencia, tráfico...)
-    data/         catálogos de zonas, edificios y vías: los menús se generan a partir de aquí
+    systems/      un archivo por sistema (demanda, crecimiento, redes, economía, influencia, tráfico, distritos...)
+    data/         catálogos de zonas, edificios, vías, departamentos y ordenanzas: los menús se generan a partir de aquí
   render/       cámara y canvas (solo lee el estado)
     art/          suelo, calles, edificios, coches, paleta y la imagen por casilla para el zoom alejado
   input/        ratón, teclado y herramientas -> comandos
@@ -99,4 +99,5 @@ balance/        informes de balance (npm run balance)
 - [x] **Fase 11**: primeros pasos guiados (8 objetivos), deshacer y rehacer (30 días de juego, devuelve el coste de lo que aún no ha cambiado), zonas en franja junto a las calles, parques en serie, modo libre (dinero ilimitado y todo desbloqueado), ajustes y cámara por los bordes
 - [x] **Fase 17**: eventos y desastres según el nivel elegido (ninguno, pocos, normales, muchos): incendios que se propagan entre edificios vecinos y que la cobertura de bomberos previene y apaga (las calles y la demolición hacen de cortafuegos), averías de centrales, y seis eventos con decisión (ola de calor, recesión, festival, una fábrica, lluvias torrenciales, un mecenas) con efectos temporales sobre la demanda, la felicidad, el agua o la recaudación
 - [x] **Fase 18**: la voz de la ciudad: el Ágora recoge lo que dicen vecinos y negocios de cada barrio (cada mensaje sale de la causa real de su lote y lleva a su sitio), las quejas repetidas se convierten en peticiones con plazo (±6 de aprobación), la aprobación del alcalde sigue a la felicidad, el paro, los impuestos y las cuentas, y cada 4 años hay elecciones (opcionales) que se pierden por debajo del 50 %; 18 logros en total
-- [ ] **Fases 13-16, 19-21**: presupuestos por departamento y ordenanzas, transporte público, basura y salud, educación y edades, monumentos y turismo, ambiente (día y noche, clima, sonido), rendimiento y accesibilidad
+- [x] **Fase 13**: gestión municipal: financiación por departamento (policía, bomberos, salud, educación y parques, del 50 al 150 % de 10 en 10: cambia el mantenimiento de sus edificios, y la cobertura es más débil por debajo de 100 % y llega más lejos por encima), 6 ordenanzas con coste mensual (hasta 4 a la vez: vigilancia vecinal, filtros industriales, ahorro de agua, incentivos al comercio, fomento industrial y fiestas populares) y distritos con nombre (hasta 12, dibujados con la herramienta «Distritos»; el Ágora los usa como nombre de barrio y el presupuesto muestra sus habitantes, empleos, felicidad, contaminación y crimen)
+- [ ] **Fases 14-16, 19-21**: transporte público, basura y salud, educación y edades, monumentos y turismo, ambiente (día y noche, clima, sonido), rendimiento y accesibilidad

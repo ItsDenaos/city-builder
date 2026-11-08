@@ -135,6 +135,20 @@ export const UNEMPLOYMENT_HAPPINESS = 20;
 export const UNHAPPY_MOVE_OUT = 25; // por debajo, los vecinos se van aunque haya demanda
 export const HAPPINESS_DEMAND_EFFECT = 0.006; // demanda R por punto de felicidad sobre/bajo 50
 
+// Presupuesto por departamento y ordenanzas (fase 13)
+/** Financiación de cada departamento, en %: 100 es lo normal. Cambia el mantenimiento y la cobertura. */
+export const FUNDING_MIN = 50;
+export const FUNDING_MAX = 150;
+export const FUNDING_STEP = 10;
+export const FUNDING_DEFAULT = 100;
+/** Cada punto de financiación por encima de 100 amplía el radio de cobertura esta fracción (a 150 %, +20 %). */
+export const FUNDING_RADIUS_GAIN = 0.004;
+/** Ordenanzas que se pueden tener activas a la vez. */
+export const MAX_ORDINANCES = 4;
+/** Distritos con nombre: máximo, longitud del nombre y lado máximo (casillas). */
+export const MAX_DISTRICTS = 12;
+export const DISTRICT_NAME_MAX = 24;
+
 export const DAYS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const START_YEAR = 2000;

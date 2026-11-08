@@ -102,6 +102,12 @@ export const MENUS: readonly MenuCategory[] = [
     items: [{ label: 'Comprar terreno', tool: { kind: 'land' }, cost: '', unlockAtPopulation: 0, icon: 'plot' }],
   },
   {
+    id: 'districts',
+    label: 'Distritos',
+    icon: 'flag',
+    items: [{ label: 'Distrito', detail: 'arrastra para delimitar', tool: { kind: 'district' }, cost: 'gratis', unlockAtPopulation: 0, icon: 'flag' }],
+  },
+  {
     id: 'bulldoze',
     label: 'Demoler',
     icon: 'demolish',
@@ -140,6 +146,8 @@ export function commandLabel(cmd: Command): string {
       return 'Demolición';
     case 'buyPlot':
       return 'Compra de parcela';
+    case 'createDistrict':
+      return 'Distrito';
     default:
       return 'Acción';
   }

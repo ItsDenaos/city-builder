@@ -1,6 +1,7 @@
-import { DEFAULT_MAP_SIZE, ELECTION_YEARS, START_MONEY, START_YEAR, TAX_DEFAULT } from './config';
+import { DEFAULT_MAP_SIZE, ELECTION_YEARS, FUNDING_DEFAULT, START_MONEY, START_YEAR, TAX_DEFAULT } from './config';
 import { generateTerrain } from './mapgen';
 import type { ServiceType } from './data/buildings';
+import type { Funding } from './data/departments';
 import { type LandState, setupLand } from './land';
 import type { TutorialState } from './tutorial';
 import type { Speed, ZoneType } from './types';
@@ -107,7 +108,9 @@ export interface Loan {
 
 export interface Budget {
   income: Record<ZoneType, number>;
-  expenses: { roads: number; networks: number; power: number; water: number; services: number; parks: number; loans: number };
+  expenses: { roads: number; networks: number; power: number; water: number; services: number; parks: number; ordinances: number; loans: number };
+  /** Mantenimiento mensual de cada departamento (ya incluido en `expenses`). */
+  departments: Funding;
   totalIncome: number;
   totalExpenses: number;
   net: number;
@@ -117,6 +120,10 @@ export interface Economy {
   money: number;
   /** Impuesto por tipo de zona, en %. */
   taxes: Record<ZoneType, number>;
+  /** Financiación de cada departamento, en % (50-150, 100 = normal). */
+  funding: Funding;
+  /** Ordenanzas activas (ids de data/ordinances.ts). */
+  ordinances: string[];
   loans: Loan[];
   nextLoanId: number;
   /** Cierre del último mes (null hasta que termine el primero). */
@@ -254,6 +261,17 @@ export const newAgora = (seed: number, elections: boolean): Agora => ({
   petitionsDone: 0,
 });
 
+/** Zona rectangular con nombre propio que pone el jugador (fase 13); manda sobre los barrios automáticos. */
+export interface District {
+  id: number;
+  name: string;
+  /** Esquinas inclusivas, en casillas. */
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export interface ScenarioState {
   id: string;
   startYear: number;
@@ -283,6 +301,9 @@ export interface GameState {
   tutorial: TutorialState | null;
   incidents: Incidents;
   agora: Agora;
+  /** Distritos con nombre; el último creado manda donde se solapan. */
+  districts: District[];
+  nextDistrictId: number;
   utilities: { power: UtilityStats; water: UtilityStats };
   time: GameTime;
   /** Una muestra por mes, la más reciente al final. */
@@ -311,7 +332,15 @@ export interface NewGameOptions {
   elections?: boolean;
 }
 
-export const newProgress = (): Progress => ({ peakPopulation: 0, rank: 0, achievements: [], monthsPositive: 0, loansClosed: 0, plotsBought: 0 });
+export const newFunding = (): Funding => ({
+  police: FUNDING_DEFAULT,
+  fire: FUNDING_DEFAULT,
+  health: FUNDING_DEFAULT,
+  education: FUNDING_DEFAULT,
+  park: FUNDING_DEFAULT,
+});
+
+export const newProgress =(): Progress => ({ peakPopulation: 0, rank: 0, achievements: [], monthsPositive: 0, loansClosed: 0, plotsBought: 0 });
 
 export function createGame(opts: NewGameOptions = {}): GameState {
   const width = opts.width ?? DEFAULT_MAP_SIZE;
@@ -360,6 +389,8 @@ export function createGame(opts: NewGameOptions = {}): GameState {
     economy: {
       money: opts.money ?? START_MONEY,
       taxes: { R: TAX_DEFAULT, C: TAX_DEFAULT, I: TAX_DEFAULT },
+      funding: newFunding(),
+      ordinances: [],
       loans: [],
       nextLoanId: 1,
       lastMonth: null,
@@ -384,6 +415,8 @@ export function createGame(opts: NewGameOptions = {}): GameState {
     tutorial: opts.tutorial ? { step: 0 } : null,
     incidents: newIncidents(opts.incidents ?? 0),
     agora: newAgora(seed, !!opts.elections && !opts.sandbox),
+    districts: [],
+    nextDistrictId: 1,
     utilities: { power: { production: 0, demand: 0 }, water: { production: 0, demand: 0 } },
     time: { tick: 0, day: 1, month: 1, year: START_YEAR, speed: 1 },
     history: [],

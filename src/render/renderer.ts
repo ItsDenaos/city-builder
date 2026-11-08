@@ -13,7 +13,7 @@ import { WORLD } from './art/palette';
 import type { Frame } from './art/util';
 import { drawCars } from './art/vehicles';
 import type { Camera } from './camera';
-import { UI } from '../theme';
+import { BRAND, FONTS, UI } from '../theme';
 
 /** Píxeles que sube una casilla de altura, por píxel de casilla (perspectiva cenital con volumen). */
 const HEIGHT_SCALE = 0.55;
@@ -94,6 +94,8 @@ export interface ViewState {
   grid: boolean;
   /** Herramienta de terrenos activa: se marcan las parcelas comprables. */
   landTool?: boolean;
+  /** Mostrar los contornos y nombres de los distritos (herramienta de distritos activa). */
+  districts?: boolean;
 }
 
 export class Renderer {
@@ -149,6 +151,7 @@ export class Renderer {
       drawFires(f);
     }
     drawLand(f, !!view.landTool, view.hover);
+    if (view.districts) this.drawDistricts(f);
     if (view.overlay === 'water') this.drawPipes(f);
     if (!flat) this.drawNoPowerMarks(f);
 
@@ -289,6 +292,25 @@ export class Renderer {
       const i = b.y * map.width + b.x;
       if (def?.power?.consumes && !powered[i]) mark(b.x + b.w - 1, b.y, i);
     }
+  }
+
+  /** Distritos del jugador: contorno discontinuo de mármol con su nombre en la esquina. */
+  private drawDistricts(f: Frame): void {
+    const { ctx, state, px, py, s } = f;
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = BRAND.marble;
+    ctx.fillStyle = BRAND.marble;
+    ctx.textBaseline = 'top';
+    ctx.font = `600 ${Math.max(10, Math.min(15, s * 0.9))}px ${FONTS.display}`;
+    for (const d of state.districts) {
+      const x0 = px(d.x0);
+      const y0 = py(d.y0);
+      ctx.strokeRect(x0 + 1, y0 + 1, px(d.x1 + 1) - x0 - 2, py(d.y1 + 1) - y0 - 2);
+      ctx.fillText(d.name, x0 + 6, y0 + 6);
+    }
+    ctx.restore();
   }
 
   private outlineTile(t: Point | null, color: string, px: (x: number) => number, py: (y: number) => number): void {

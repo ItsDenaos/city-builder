@@ -1,5 +1,6 @@
-import { effectHappiness } from '../effects';
+import { effectCrime, effectHappiness, effectIndustryPollution } from '../effects';
 import {
+  FUNDING_RADIUS_GAIN,
   CRIME_LAND_VALUE,
   CRIME_PER_OCCUPANT,
   COMMUTE_HAPPINESS,
@@ -97,6 +98,8 @@ export function computeInfluence(state: GameState): void {
   crime.fill(0);
   landValue.fill(0); // aquí se acumulan primero los efectos de edificios
   const crimeEffects = new Float32Array(size);
+  const industryMult = effectIndustryPollution(state);
+  const crimeMult = effectCrime(state);
 
   // 1-2. Edificios colocados
   for (const b of state.buildings.values()) {
@@ -105,7 +108,10 @@ export function computeInfluence(state: GameState): void {
     const cx = b.x + (b.w - 1) / 2;
     const cy = b.y + (b.h - 1) / 2;
     if (def.coverage && layers.powered[tileIndex(map, b.x, b.y)]) {
-      stamp(map, coverage[def.coverage.service], cx, cy, def.coverage.radius, 100, 'max');
+      // La financiación del departamento debilita la cobertura por debajo de 100 % y la alarga por encima
+      const funding = economy.funding[def.coverage.service];
+      const radius = def.coverage.radius * (1 + Math.max(0, funding - 100) * FUNDING_RADIUS_GAIN);
+      stamp(map, coverage[def.coverage.service], cx, cy, radius, Math.min(100, funding), 'max');
     }
     const fx = def.effects;
     if (fx?.pollution) stamp(map, pollution, cx, cy, fx.radius, fx.pollution, 'add');
@@ -121,7 +127,7 @@ export function computeInfluence(state: GameState): void {
     const y = (i - x) / map.width;
     const type = map.zoneType[i];
     if (type === ZONE_CODE.I) {
-      stamp(map, pollution, x, y, INDUSTRY_POLLUTION_RADIUS, INDUSTRY_POLLUTION[map.zoneDensity[i]] * level, 'add');
+      stamp(map, pollution, x, y, INDUSTRY_POLLUTION_RADIUS, INDUSTRY_POLLUTION[map.zoneDensity[i]] * level * industryMult, 'add');
     } else if (map.lotOccupants[i]) {
       stamp(map, crime, x, y, CRIME_RADIUS, map.lotOccupants[i] * CRIME_PER_OCCUPANT, 'add');
     }
@@ -141,7 +147,7 @@ export function computeInfluence(state: GameState): void {
   const water = waterDistance(map, WATERFRONT_RADIUS);
   for (let i = 0; i < size; i++) {
     pollution[i] = clamp100(pollution[i]);
-    crime[i] = clamp100(crime[i] + crimeEffects[i] - coverage.police[i] * POLICE_CRIME_REDUCTION);
+    crime[i] = clamp100(crime[i] * crimeMult + crimeEffects[i] - coverage.police[i] * POLICE_CRIME_REDUCTION);
     const waterfront = water[i] <= WATERFRONT_RADIUS ? WATERFRONT_BONUS * (1 - (water[i] - 1) / WATERFRONT_RADIUS) : 0;
     const services = (coverage.police[i] + coverage.fire[i] + coverage.health[i] + coverage.education[i]) * SERVICE_LAND_VALUE;
     landValue[i] = clamp100(

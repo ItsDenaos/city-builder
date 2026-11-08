@@ -15,7 +15,7 @@ City builder para navegador al estilo SimCity / Cities: Skylines, con simulació
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (?seed=123 cambia el mapa de la demostración)
-npm test           # 159 tests en ~35 s, incluidos los objetivos de balance
+npm test           # 176 tests en ~35 s, incluidos los objetivos de balance
 npm run typecheck  # tsc --noEmit
 npm run build      # tipos + build de producción en dist/
 npm run balance    # informe largo con el jugador automático (balance/, hasta 10 min)
@@ -87,17 +87,16 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 **Hecho**:
 - fases 0 a 10 (simulación, redes, economía, influencia, tráfico, menús, balance y arte);
 - la identidad AKROPOLIS;
-- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos) y 18 (Ágora), detalladas en el README.
+- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora) y 13 (financiación por departamento, ordenanzas y distritos), detalladas en el README.
 
 **Pendiente, en el orden recomendado**:
-1. **Fase 13**: presupuesto por departamento (deslizadores del 50 al 150 % que cambian la cobertura y el mantenimiento), ordenanzas (políticas con coste y efecto) y distritos con nombre. Ya hay barrios automáticos de 24 × 24 casillas en `data/agora.ts` que pueden servir de base.
-2. **Fase 16**: transporte público (autobuses, metro, estación de tren) y reparto entre modos de transporte. Se engancha al tráfico (`systems/traffic.ts`) y a la queja "trayecto" del Ágora.
-3. **Fase 14**: basura y salud.
-4. **Fase 15**: niveles de educación y edades de la población.
-5. **Fase 19**: monumentos y turismo.
-6. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
-7. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
-8. **Resto de la fase 2**: carreteras curvas.
+1. **Fase 16**: transporte público (autobuses, metro, estación de tren) y reparto entre modos de transporte. Se engancha al tráfico (`systems/traffic.ts`) y a la queja "trayecto" del Ágora.
+2. **Fase 14**: basura y salud.
+3. **Fase 15**: niveles de educación y edades de la población.
+4. **Fase 19**: monumentos y turismo.
+5. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
+6. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
+7. **Resto de la fase 2**: carreteras curvas.
 
 Cada fase nueva debe:
 - llevar tests propios;
@@ -111,6 +110,8 @@ Cada fase nueva debe:
 - **Evento con decisión**: añadir una entrada en `src/sim/data/incidents.ts` con al menos una opción gratis, que debe ir la última. Los efectos temporales se crean con `addEffect` (effects.ts), y los sistemas los leen con `effectDemand`, `effectHappiness`, etc.
 - **Logro**: añadir una entrada en `src/sim/data/achievements.ts`; se comprueba al cerrar cada mes.
 - **Tema del Ágora**: añadir una entrada en `TOPICS` (data/agora.ts) con su `detect` sobre datos reales. Si debe dar petición, se le añade `petition` con un objetivo medible en la casilla.
+- **Ordenanza**: añadir una entrada en `src/sim/data/ordinances.ts` con su coste mensual y sus modificadores (`happiness`, `crime`, `industryPollution`, `waterDemand`, `demand`, `taxIncome`); `effects.ts` los suma a los de los eventos y el panel de presupuesto la lista sola. Si necesita un modificador nuevo, se añade el campo y una función `effect...` en `effects.ts`.
+- **Departamento**: uno por `ServiceType` con cobertura (`data/departments.ts`). Su financiación (`economy.funding`, 50-150 %) escala el mantenimiento en `estimateBudget` y la cobertura en `computeInfluence`.
 - **Ajuste del jugador**: añadir una entrada en `SETTING_FIELDS` (ui/settings.ts) y aplicarla en `main.ts`.
 
 ## Continuar en otro PC
