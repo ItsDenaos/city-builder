@@ -30,6 +30,7 @@ const EXPENSE_LABELS: Record<keyof Budget['expenses'], string> = {
   water: 'Agua',
   services: 'Servicios',
   parks: 'Parques',
+  transport: 'Transporte',
   ordinances: 'Ordenanzas',
   loans: 'Préstamos',
 };
@@ -209,9 +210,10 @@ export class BudgetPanel {
     return `
       <div class="section-title"><span class="kicker">Impuestos</span><span class="kicker">Ingreso / mes</span></div>
       ${taxes}
+      ${est.fares > 0 ? kv('Billetes de transporte', formatMoney(est.fares)) : ''}
       <div class="section-title"><span class="kicker">Financiación</span><span class="kicker">Gasto / mes</span></div>
       ${funding}
-      <p class="muted">Por debajo de 100 % la cobertura es más débil; por encima llega más lejos y cuesta más.</p>
+      <p class="muted">En los servicios, por debajo de 100 % la cobertura es más débil y por encima llega más lejos; en el transporte cambia la frecuencia. Más financiación, más gasto.</p>
       <div class="section-title"><span class="kicker">Ordenanzas</span><span class="muted">${active} / ${MAX_ORDINANCES}</span></div>
       ${ordinances}
       <div class="section-title"><span class="kicker">Distritos</span><span class="muted">${state.districts.length} / ${MAX_DISTRICTS}</span></div>

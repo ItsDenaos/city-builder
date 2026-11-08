@@ -18,6 +18,7 @@ import { ZONE_BY_CODE, getZoneDefByCode } from '../data/zones';
 import { effectDemand } from '../effects';
 import type { CityStats, GameState } from '../state';
 import type { ZoneType } from '../types';
+import { regionalDemand } from './transit';
 
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
 
@@ -85,5 +86,7 @@ export function taxDemandPenalty(rate: number): number {
 export function updateDemand(state: GameState): void {
   const target = targetDemand(state.stats, state.economy.taxes);
   const d = state.stats.demand;
-  for (const k of ['R', 'C', 'I'] as const) d[k] += (clamp1(target[k] + effectDemand(state, k)) - d[k]) * DEMAND_SMOOTHING;
+  for (const k of ['R', 'C', 'I'] as const) {
+    d[k] += (clamp1(target[k] + effectDemand(state, k) + regionalDemand(state, k)) - d[k]) * DEMAND_SMOOTHING;
+  }
 }

@@ -10,6 +10,8 @@ export type Tool =
   | { kind: 'powerLine' }
   | { kind: 'pipe' }
   | { kind: 'removePipe' }
+  | { kind: 'metro' }
+  | { kind: 'removeMetro' }
   | { kind: 'zone'; zone: ZoneType; density: Density }
   | { kind: 'dezone' }
   | { kind: 'bulldoze' }
@@ -31,14 +33,16 @@ export interface ToolOptions {
 export const STRIP_DEPTHS = [0, 1, 2, 3] as const;
 
 /** Vista de red que conviene mostrar mientras se usa la herramienta. */
-export function toolOverlay(tool: Tool): 'power' | 'water' | 'traffic' | null {
+export function toolOverlay(tool: Tool): 'power' | 'water' | 'traffic' | 'transit' | null {
   if (tool.kind === 'road' && tool.road === 'avenue') return 'traffic';
   if (tool.kind === 'powerLine') return 'power';
   if (tool.kind === 'pipe' || tool.kind === 'removePipe') return 'water';
+  if (tool.kind === 'metro' || tool.kind === 'removeMetro') return 'transit';
   if (tool.kind === 'building') {
     const category = getBuildingDef(tool.defId)?.category;
     if (category === 'power') return 'power';
     if (category === 'water') return 'water';
+    if (category === 'transport') return 'transit';
   }
   return null;
 }
@@ -60,6 +64,10 @@ export function toolCommand(tool: Tool, start: Point, end: Point, opts: ToolOpti
       return { type: 'buildPipe', from: start, to: end };
     case 'removePipe':
       return { type: 'removePipe', rect: normalizeRect(start, end) };
+    case 'metro':
+      return { type: 'buildMetro', from: start, to: end };
+    case 'removeMetro':
+      return { type: 'removeMetro', rect: normalizeRect(start, end) };
     case 'zone':
       return { type: 'zone', rect: normalizeRect(start, end), zone: tool.zone, density: tool.density, ...(opts.strip ? { strip: opts.strip } : {}) };
     case 'dezone':
@@ -88,8 +96,10 @@ export function toolPreviewTiles(tool: Tool, start: Point | null, hover: Point):
     case 'road':
     case 'powerLine':
     case 'pipe':
+    case 'metro':
       return roadPath(from, hover);
     case 'removePipe':
+    case 'removeMetro':
     case 'zone':
     case 'dezone':
     case 'bulldoze':

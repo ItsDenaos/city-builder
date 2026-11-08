@@ -32,6 +32,12 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     description: 'Un edificio de densidad alta llega al nivel 3.',
     check: (s) => s.map.lotLevel.some((v, i) => v === 3 && s.map.zoneDensity[i] === 2),
   },
+  {
+    id: 'sin-coche',
+    name: 'Sin coche',
+    description: 'El 30 % de los trayectos al trabajo en transporte público con 3.000 habitantes.',
+    check: (s) => pop(s) >= 3_000 && s.stats.transit.share >= 0.3,
+  },
   { id: 'trafico-fluido', name: 'Tráfico fluido', description: 'Menos del 2 % de vías saturadas con 10.000 habitantes.', check: (s) => pop(s) >= 10_000 && s.stats.traffic.congestedShare < 0.02 },
   { id: 'aire-puro', name: 'Aire puro', description: 'Contaminación media en las viviendas por debajo de 5 con 5.000 habitantes.', check: (s) => pop(s) >= 5_000 && residentAverages(s).pollution < 5 },
   { id: 'ciudad-segura', name: 'Ciudad segura', description: 'Crimen medio en las viviendas por debajo de 10 con 5.000 habitantes.', check: (s) => pop(s) >= 5_000 && residentAverages(s).crime < 10 },

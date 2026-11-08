@@ -11,6 +11,9 @@ import { ZONE_CODE, getZoneDefByCode } from './zones';
 
 // ---------- Barrios ----------
 
+/** Población a partir de la que los vecinos piden transporte público. */
+const TRANSIT_COMPLAINT_POPULATION = 1_500;
+
 /** Lado de cada barrio, en casillas. */
 export const NEIGHBORHOOD_SIZE = 24;
 
@@ -170,6 +173,13 @@ export const TOPICS: readonly TopicDef[] = [
     petition: { title: (b) => `Conectar ${b} con el empleo`, months: 4, goal: (s, i) => yes('Camino hasta un empleo', L(s).commute[i] >= 0) },
   },
   {
+    // Trayecto largo y ninguna parada a pie: piden transporte público (antes que «mejores accesos»)
+    id: 'sin-transporte', tone: 'queja', speaker: 'vecino',
+    detect: (s, i) => L(s).commute[i] > COMMUTE_OK + 10 && !L(s).transitCoverage[i] && s.stats.population >= TRANSIT_COMPLAINT_POPULATION,
+    lines: ['¿Para cuándo una parada de autobús por aquí?', 'Sin coche no hay forma de moverse por este barrio.', 'Pasaría del coche si hubiera un autobús decente.'],
+    petition: { title: (b) => `Transporte público para ${b}`, months: 6, goal: (s, i) => yes('Parada o estación a pie', L(s).transitCoverage[i] > 0) },
+  },
+  {
     id: 'trayecto', tone: 'queja', speaker: 'vecino',
     detect: (s, i) => L(s).commute[i] > COMMUTE_OK + 10,
     lines: ['Tardo una eternidad en llegar al trabajo.', 'Hora y media de atasco cada mañana.', 'Paso más tiempo en el coche que en casa.'],
@@ -213,6 +223,11 @@ export const TOPICS: readonly TopicDef[] = [
     id: 'seguro', tone: 'elogio', speaker: 'vecino',
     detect: (s, i) => L(s).happiness[i] >= 65 && L(s).crime[i] < 5,
     lines: ['Un barrio tranquilo y seguro.', 'Aquí se puede dejar la bici en la calle.'],
+  },
+  {
+    id: 'transporte', tone: 'elogio', speaker: 'vecino',
+    detect: (s, i) => L(s).happiness[i] >= 60 && L(s).transitShare[i] >= 0.4,
+    lines: ['Voy al trabajo en metro y llego en un momento.', 'El autobús me deja en la puerta del trabajo.', 'Desde que hay transporte, el coche se queda en el garaje.'],
   },
   {
     id: 'feliz', tone: 'elogio', speaker: 'vecino',

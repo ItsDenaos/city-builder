@@ -1,9 +1,10 @@
-import { CONGESTION_COST, SHOPPING_TRIPS_PER_RESIDENT, TRAFFIC_SMOOTHING, WORKFORCE_RATIO } from '../config';
+import { BUS_ROAD_LOAD, CONGESTION_COST, SHOPPING_TRIPS_PER_RESIDENT, TRAFFIC_SMOOTHING, WORKFORCE_RATIO } from '../config';
 import { getBuildingDef } from '../data/buildings';
 import { ROAD_BY_CODE } from '../data/roads';
 import { ZONE_CODE } from '../data/zones';
-import { MinHeap } from '../heap';
-import { type GameMap, type GameState, tileIndex } from '../state';
+import { type GameMap, type GameState, TRANSIT_MODE_CODE, tileIndex } from '../state';
+import { accumulate, shortestTree } from './paths';
+import { planTransit, transitShareFor } from './transit';
 
 /** Capacidad (viajes/día) de una casilla de carretera; 0 si no hay carretera. */
 export function roadCapacity(map: GameMap, i: number): number {
@@ -18,56 +19,13 @@ function travelCost(map: GameMap, traffic: Float32Array, i: number): number {
 }
 
 /**
- * Asigna viajes a la red con un árbol de caminos mínimos:
- * Dijkstra desde todos los destinos a la vez (cada carretera queda unida a su destino más cercano),
- * y luego el flujo de cada origen se acumula siguiendo el árbol hacia su destino.
- * Devuelve el coste de viaje desde cada casilla de carretera a su destino más cercano (Infinity si no llega).
- */
-function assign(map: GameMap, prevTraffic: Float32Array, origins: Float32Array, destinations: Uint8Array, out: Float32Array): Float32Array {
-  const size = map.width * map.height;
-  const dist = new Float32Array(size).fill(Infinity);
-  const parent = new Int32Array(size).fill(-1);
-  const settled = new Uint8Array(size);
-  const order: number[] = [];
-  const heap = new MinHeap();
-  for (let i = 0; i < size; i++) {
-    if (destinations[i] && map.road[i]) {
-      dist[i] = 0;
-      heap.push(i, 0);
-    }
-  }
-  const w = map.width;
-  while (heap.size) {
-    const i = heap.pop();
-    if (settled[i]) continue;
-    settled[i] = 1;
-    order.push(i);
-    const x = i % w;
-    const neighbors = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w];
-    for (const n of neighbors) {
-      if (n < 0 || n >= size || !map.road[n] || settled[n]) continue;
-      const d = dist[i] + travelCost(map, prevTraffic, n);
-      if (d < dist[n]) {
-        dist[n] = d;
-        parent[n] = i;
-        heap.push(n, d);
-      }
-    }
-  }
-  // Acumular el flujo desde los más lejanos hacia sus destinos
-  const flow = origins.slice();
-  for (let k = order.length - 1; k >= 0; k--) {
-    const i = order[k];
-    out[i] += flow[i];
-    if (parent[i] >= 0) flow[parent[i]] += flow[i];
-  }
-  return dist;
-}
-
-/**
  * Tráfico diario (simulación agregada, sin vehículos individuales):
  * - Cada vivienda manda a sus trabajadores al empleo más cercano en tiempo de viaje
- *   y a una parte de sus vecinos al comercio más cercano.
+ *   y a una parte de sus vecinos al comercio más cercano. Los viajes se asignan con un árbol de
+ *   caminos mínimos: Dijkstra desde todos los destinos a la vez y el flujo de cada origen se acumula
+ *   siguiendo el árbol (paths.ts).
+ * - Reparto modal (fase 16): si hay una parada a pie que lleve a un empleo, parte de los trabajadores
+ *   deja el coche (transit.ts). Esos viajes salen de la calzada; los autobuses ponen algo de carga.
  * - El coste de cada casilla usa la congestión del día anterior, así que el tráfico
  *   se reparte solo por rutas alternativas cuando una vía se satura.
  * - Calcula también el trayecto al trabajo de cada lote (layers.commute).
@@ -77,7 +35,6 @@ export function computeTraffic(state: GameState): void {
   const { map, layers, stats } = state;
   const size = map.width * map.height;
   const entry = layers.roadEntry;
-  const commuters = new Float32Array(size);
   const shoppers = new Float32Array(size);
   const jobs = new Uint8Array(size);
   const shops = new Uint8Array(size);
@@ -88,7 +45,6 @@ export function computeTraffic(state: GameState): void {
     const type = map.zoneType[i];
     // Cualquier comercio o industria construido cuenta como destino, aunque aún no tenga plantilla
     if (type === ZONE_CODE.R) {
-      commuters[e] += map.lotOccupants[i] * WORKFORCE_RATIO;
       shoppers[e] += map.lotOccupants[i] * SHOPPING_TRIPS_PER_RESIDENT;
     } else {
       jobs[e] = 1;
@@ -101,9 +57,59 @@ export function computeTraffic(state: GameState): void {
     if (e >= 0) jobs[e] = 1;
   }
 
+  const isRoad = (n: number) => map.road[n] !== 0;
+  const carStep = (n: number) => travelCost(map, layers.traffic, n);
+  const sourcesOf = (mask: Uint8Array) => {
+    const sources: [number, number][] = [];
+    for (let i = 0; i < size; i++) if (mask[i] && map.road[i]) sources.push([i, 0]);
+    return sources;
+  };
+  const toWork = shortestTree(map, isRoad, sourcesOf(jobs), carStep);
+  const transit = planTransit(state);
+
+  // Reparto modal y trayecto al trabajo de cada lote residencial
+  const commuters = new Float32Array(size);
+  const busLoad = new Float32Array(size);
+  const riders = { bus: 0, metro: 0, train: 0 };
+  layers.ridership.clear();
+  layers.transitStops = new Map(transit.stops.map((s) => [s.b.id, { egress: s.egress, cost: s.cost }]));
+  layers.transitShare.fill(0);
+  layers.transitMode.fill(0);
+  layers.commute.fill(-1);
+  let weighted = 0;
+  let residents = 0;
+  let workforce = 0;
+  for (let i = 0; i < size; i++) {
+    const e = entry[i];
+    if (e < 0 || map.zoneType[i] !== ZONE_CODE.R || !map.lotLevel[i]) continue;
+    const workers = map.lotOccupants[i] * WORKFORCE_RATIO;
+    const d = toWork.dist[e];
+    const car = Number.isFinite(d) ? d + layers.roadAccess[i] : Infinity;
+    const byTransit = transit.cost[i];
+    const share = transitShareFor(car, byTransit);
+    commuters[e] += workers * (1 - share);
+    workforce += workers;
+    if (share > 0) {
+      const stop = transit.stops[transit.origin[i]];
+      const r = workers * share;
+      riders[stop.mode] += r;
+      layers.ridership.set(stop.b.id, (layers.ridership.get(stop.b.id) ?? 0) + r);
+      if (stop.mode === 'bus') busLoad[stop.entry] += r * BUS_ROAD_LOAD;
+      layers.transitShare[i] = share;
+      layers.transitMode[i] = TRANSIT_MODE_CODE[stop.mode];
+    }
+    // Quien elige el transporte no tarda más que en coche: si lo coge es porque le compensa
+    const commute = Number.isFinite(car) ? car - share * Math.max(0, car - byTransit) : byTransit;
+    if (!Number.isFinite(commute)) continue;
+    layers.commute[i] = commute;
+    weighted += layers.commute[i] * map.lotOccupants[i];
+    residents += map.lotOccupants[i];
+  }
+
   const fresh = new Float32Array(size);
-  const toWork = assign(map, layers.traffic, commuters, jobs, fresh);
-  assign(map, layers.traffic, shoppers, shops, fresh);
+  accumulate(toWork, commuters, fresh);
+  accumulate(shortestTree(map, isRoad, sourcesOf(shops), carStep), shoppers, fresh);
+  if (transit.busTree) accumulate(transit.busTree, busLoad, fresh);
 
   // Suavizar para que las rutas no oscilen de un día a otro
   let trips = 0;
@@ -118,25 +124,18 @@ export function computeTraffic(state: GameState): void {
     roads++;
     if (layers.traffic[i] > roadCapacity(map, i)) congested++;
   }
-
-  // Trayecto al trabajo de cada lote residencial
-  let weighted = 0;
-  let residents = 0;
-  layers.commute.fill(-1);
-  for (let i = 0; i < size; i++) {
-    const e = entry[i];
-    if (e < 0 || map.zoneType[i] !== ZONE_CODE.R || !map.lotLevel[i]) continue;
-    const d = toWork[e];
-    if (!Number.isFinite(d)) continue;
-    layers.commute[i] = d + layers.roadAccess[i];
-    weighted += layers.commute[i] * map.lotOccupants[i];
-    residents += map.lotOccupants[i];
-  }
   for (let i = 0; i < size; i++) trips += commuters[i] + shoppers[i];
 
+  const totalRiders = riders.bus + riders.metro + riders.train;
   stats.traffic = {
     trips: Math.round(trips),
     congestedShare: roads ? congested / roads : 0,
     avgCommute: residents ? weighted / residents : 0,
+  };
+  stats.transit = {
+    riders: totalRiders,
+    ...riders,
+    share: workforce ? totalRiders / workforce : 0,
+    trainStations: transit.stops.filter((s) => s.mode === 'train').length,
   };
 }

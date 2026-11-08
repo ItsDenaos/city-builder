@@ -18,6 +18,7 @@ export function recordHistory(state: GameState, events: SimEvent[]): void {
     income: economy.lastMonth?.totalIncome ?? 0,
     expenses: economy.lastMonth?.totalExpenses ?? 0,
     commute: stats.traffic.avgCommute,
+    transitShare: stats.transit.share,
   });
   if (state.history.length > STATS_HISTORY_MONTHS) state.history.shift();
 }

@@ -47,6 +47,13 @@ const CHARTS: Chart[] = [
   },
   { id: 'unemployment', label: 'Paro', zero: true, format: pct, series: [{ label: 'Paro', color: DATA.unemployment, value: (s) => s.unemployment * 100 }] },
   { id: 'commute', label: 'Trayecto', zero: true, format: (v) => v.toFixed(0), series: [{ label: 'Trayecto medio al trabajo', color: DATA.commute, value: (s) => s.commute }] },
+  {
+    id: 'transit',
+    label: 'Transporte',
+    zero: true,
+    format: pct,
+    series: [{ label: 'Trayectos en transporte público', color: DATA.transit, value: (s) => (s.transitShare ?? 0) * 100 }],
+  },
 ];
 
 const RANGES = [

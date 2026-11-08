@@ -1,8 +1,9 @@
 // Catálogo de edificios colocables. Para añadir un edificio basta con una entrada nueva:
 // los menús, la validación y el render lo leen de aquí.
 
-export type BuildingCategory = 'power' | 'water' | 'services' | 'parks';
+export type BuildingCategory = 'power' | 'water' | 'services' | 'parks' | 'transport';
 export type ServiceType = 'police' | 'fire' | 'health' | 'education' | 'park';
+export type TransitMode = 'bus' | 'metro' | 'train';
 
 export interface BuildingDef {
   id: string;
@@ -15,6 +16,8 @@ export interface BuildingDef {
   power?: { produces?: number; consumes?: number }; // MW
   water?: { produces?: number; consumes?: number }; // m³/día (unidades de juego)
   coverage?: { service: ServiceType; radius: number };
+  /** Parada o estación de transporte público: modo y distancia a pie (casillas) desde la que se llega. */
+  transit?: { mode: TransitMode; radius: number };
   /** Efecto máximo (escala 0-100) en el centro; decrece hasta el radio. */
   effects?: { pollution?: number; landValue?: number; crime?: number; radius: number };
   capacity?: { jobs?: number; residents?: number };
@@ -29,6 +32,7 @@ export const BUILDING_CATEGORIES: readonly { id: BuildingCategory; label: string
   { id: 'water', label: 'Agua' },
   { id: 'services', label: 'Servicios' },
   { id: 'parks', label: 'Parques' },
+  { id: 'transport', label: 'Transporte' },
 ];
 
 export const BUILDINGS: readonly BuildingDef[] = [
@@ -107,6 +111,26 @@ export const BUILDINGS: readonly BuildingDef[] = [
     size: { w: 2, h: 2 }, cost: 800, upkeep: 20,
     coverage: { service: 'park', radius: 6 }, effects: { landValue: 25, crime: -15, radius: 6 },
     unlockAtPopulation: 0, color: '#C9C2B2',
+  },
+  // Transporte (fase 16): sirven si tienen acceso a una calle conectada; metro y tren, además, electricidad.
+  // No tienen plantilla: si la tuvieran serían el empleo más cercano de su barrio y atraerían los coches.
+  {
+    id: 'bus_stop', name: 'Parada de autobús', short: 'BUS', category: 'transport',
+    size: { w: 1, h: 1 }, cost: 400, upkeep: 25,
+    transit: { mode: 'bus', radius: 5 },
+    unlockAtPopulation: 300, color: '#B86B4B',
+  },
+  {
+    id: 'metro_station', name: 'Estación de metro', short: 'M', category: 'transport',
+    size: { w: 2, h: 2 }, cost: 6_000, upkeep: 180,
+    transit: { mode: 'metro', radius: 8 }, power: { consumes: 6 },
+    unlockAtPopulation: 2_000, color: '#4F7393',
+  },
+  {
+    id: 'train_station', name: 'Estación de tren', short: 'TR', category: 'transport',
+    size: { w: 3, h: 3 }, cost: 14_000, upkeep: 320,
+    transit: { mode: 'train', radius: 9 }, power: { consumes: 10 },
+    unlockAtPopulation: 5_000, color: '#6E6585',
   },
 ];
 

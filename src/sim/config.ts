@@ -149,6 +149,36 @@ export const MAX_ORDINANCES = 4;
 export const MAX_DISTRICTS = 12;
 export const DISTRICT_NAME_MAX = 24;
 
+// Transporte público (fase 16). Los costes van en la misma unidad que el trayecto en coche
+// (una casilla de calle sin tráfico cuesta 1).
+/** Coste de cada casilla a pie, de casa a la parada y de la parada al empleo (se mide en línea recta). */
+export const WALK_COST = 1.5;
+/** Espera media en cada modo con la financiación de transporte al 100 % (a más financiación, más frecuencia). */
+export const TRANSIT_WAIT = { bus: 4, metro: 3, train: 6 } as const;
+/** El autobús va por las calles: cada casilla cuesta como en coche por este factor (para en las paradas). */
+export const BUS_TRAVEL_FACTOR = 1.1;
+/** Fracción de la congestión que sufre el autobús (prioridad en cruces, carriles propios en los tramos peores). */
+export const BUS_CONGESTION = 0.5;
+/** Coste por casilla de túnel de metro: rápido y sin atascos. */
+export const METRO_TILE_COST = 0.35;
+/** Coste por casilla, en línea recta, entre dos estaciones de tren. */
+export const TRAIN_TILE_COST = 0.25;
+/** Fracción máxima de trabajadores que deja el coche aunque el transporte sea mucho mejor. */
+export const TRANSIT_MAX_SHARE = 0.7;
+/** Lo que el coche cuesta y el transporte no (aparcar, gasolina): inclina la balanza hacia el transporte. */
+export const CAR_OVERHEAD = 6;
+/** Suavidad del reparto entre coche y transporte (curva logística sobre la diferencia de costes). */
+export const MODE_SPLIT_SCALE = 5;
+/** Viajes de coche que equivale cada viajero de autobús: los autobuses también ocupan la calle. */
+export const BUS_ROAD_LOAD = 0.15;
+/** Ingresos por billetes: dinero al mes por cada viajero diario. */
+export const TRANSIT_FARE = 0.5;
+export const METRO_TUNNEL_COST = 30;
+/** Mantenimiento mensual por casilla de túnel (se escala con la financiación de transporte). */
+export const METRO_TUNNEL_UPKEEP = 0.5;
+/** Demanda que trae una estación de tren activa: visitantes para el comercio y mercancías para la industria. */
+export const TRAIN_DEMAND: Partial<Record<ZoneType, number>> = { C: 0.03, I: 0.06 };
+
 export const DAYS_PER_MONTH = 30;
 export const MONTHS_PER_YEAR = 12;
 export const START_YEAR = 2000;

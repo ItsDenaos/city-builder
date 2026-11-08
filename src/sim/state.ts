@@ -32,7 +32,12 @@ export interface GameMap {
   waterPipe: Uint8Array;
   /** Días que lleva ardiendo el edificio de la casilla (0 = no arde). */
   fire: Uint8Array;
+  /** Túnel de metro (subterráneo: convive con cualquier cosa en superficie). */
+  metro: Uint8Array;
 }
+
+/** Modo de transporte público de un lote en las capas derivadas (0 = ninguno). */
+export const TRANSIT_MODE_CODE = { bus: 1, metro: 2, train: 3 } as const;
 
 /** Capas derivadas: los sistemas las recalculan, no hace falta guardarlas. */
 export interface DerivedLayers {
@@ -55,6 +60,19 @@ export interface DerivedLayers {
   landValue: Float32Array; // 0-100
   /** Felicidad de los vecinos de cada lote residencial, 0-100 (0 en el resto). */
   happiness: Float32Array;
+  /** Fracción de los trabajadores de cada lote residencial que va al trabajo en transporte público (0-1). */
+  transitShare: Float32Array;
+  /** Modo de transporte que usarían los vecinos de cada lote residencial (TRANSIT_MODE_CODE, 0 = ninguno). */
+  transitMode: Uint8Array;
+  /** Casillas a distancia a pie de alguna parada o estación en servicio (máscara de bits por modo). */
+  transitCoverage: Uint8Array;
+  /** Viajeros que suben cada día en cada parada o estación (por id de edificio). */
+  ridership: Map<number, number>;
+  /**
+   * Paradas en servicio (por id de edificio): coste a pie hasta el empleo más cercano desde la parada
+   * y coste del viaje desde ella hasta un empleo (Infinity si no lleva a ninguno). Para el inspector.
+   */
+  transitStops: Map<number, { egress: number; cost: number }>;
 }
 
 export interface UtilityStats {
@@ -95,7 +113,22 @@ export interface CityStats {
   /** Felicidad media de los habitantes, 0-100. */
   happiness: number;
   traffic: { trips: number; congestedShare: number; avgCommute: number };
+  transit: TransitStats;
 }
+
+/** Transporte público (fase 16): viajeros diarios al trabajo por modo. */
+export interface TransitStats {
+  riders: number;
+  bus: number;
+  metro: number;
+  train: number;
+  /** Fracción de los trayectos al trabajo que se hacen en transporte público (0-1). */
+  share: number;
+  /** Estaciones de tren en servicio (la primera trae demanda regional). */
+  trainStations: number;
+}
+
+export const newTransitStats = (): TransitStats => ({ riders: 0, bus: 0, metro: 0, train: 0, share: 0, trainStations: 0 });
 
 export interface Loan {
   id: number;
@@ -108,7 +141,19 @@ export interface Loan {
 
 export interface Budget {
   income: Record<ZoneType, number>;
-  expenses: { roads: number; networks: number; power: number; water: number; services: number; parks: number; ordinances: number; loans: number };
+  /** Billetes del transporte público (fase 16), ya incluidos en `totalIncome`. */
+  fares: number;
+  expenses: {
+    roads: number;
+    networks: number;
+    power: number;
+    water: number;
+    services: number;
+    parks: number;
+    transport: number;
+    ordinances: number;
+    loans: number;
+  };
   /** Mantenimiento mensual de cada departamento (ya incluido en `expenses`). */
   departments: Funding;
   totalIncome: number;
@@ -146,6 +191,8 @@ export interface StatsSample {
   income: number;
   expenses: number;
   commute: number;
+  /** Fracción de trayectos en transporte público (no existe en partidas anteriores a la fase 16). */
+  transitShare?: number;
 }
 
 export interface Progress {
@@ -338,6 +385,7 @@ export const newFunding = (): Funding => ({
   health: FUNDING_DEFAULT,
   education: FUNDING_DEFAULT,
   park: FUNDING_DEFAULT,
+  transit: FUNDING_DEFAULT,
 });
 
 export const newProgress =(): Progress => ({ peakPopulation: 0, rank: 0, achievements: [], monthsPositive: 0, loansClosed: 0, plotsBought: 0 });
@@ -364,6 +412,7 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       powerLine: new Uint8Array(size),
       waterPipe: new Uint8Array(size),
       fire: new Uint8Array(size),
+      metro: new Uint8Array(size),
     },
     layers: {
       roadAccess: new Uint8Array(size).fill(NO_ACCESS),
@@ -383,6 +432,11 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       crime: new Float32Array(size),
       landValue: new Float32Array(size),
       happiness: new Float32Array(size),
+      transitShare: new Float32Array(size),
+      transitMode: new Uint8Array(size),
+      transitCoverage: new Uint8Array(size),
+      ridership: new Map(),
+      transitStops: new Map(),
     },
     buildings: new Map(),
     nextBuildingId: 1,
@@ -407,6 +461,7 @@ export function createGame(opts: NewGameOptions = {}): GameState {
       demand: { R: 0, C: 0, I: 0 },
       happiness: 50,
       traffic: { trips: 0, congestedShare: 0, avgCommute: 0 },
+      transit: newTransitStats(),
     },
     progress: newProgress(),
     land: null,

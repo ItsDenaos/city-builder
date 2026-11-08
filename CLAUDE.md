@@ -15,7 +15,7 @@ City builder para navegador al estilo SimCity / Cities: Skylines, con simulació
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (?seed=123 cambia el mapa de la demostración)
-npm test           # 176 tests en ~35 s, incluidos los objetivos de balance
+npm test           # 195 tests en ~90 s, incluidos los objetivos de balance
 npm run typecheck  # tsc --noEmit
 npm run build      # tipos + build de producción en dist/
 npm run balance    # informe largo con el jugador automático (balance/, hasta 10 min)
@@ -87,16 +87,15 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 **Hecho**:
 - fases 0 a 10 (simulación, redes, economía, influencia, tráfico, menús, balance y arte);
 - la identidad AKROPOLIS;
-- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora) y 13 (financiación por departamento, ordenanzas y distritos), detalladas en el README.
+- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos) y 16 (transporte público), detalladas en el README.
 
 **Pendiente, en el orden recomendado**:
-1. **Fase 16**: transporte público (autobuses, metro, estación de tren) y reparto entre modos de transporte. Se engancha al tráfico (`systems/traffic.ts`) y a la queja "trayecto" del Ágora.
-2. **Fase 14**: basura y salud.
-3. **Fase 15**: niveles de educación y edades de la población.
-4. **Fase 19**: monumentos y turismo.
-5. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
-6. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
-7. **Resto de la fase 2**: carreteras curvas.
+1. **Fase 14**: basura y salud.
+2. **Fase 15**: niveles de educación y edades de la población.
+3. **Fase 19**: monumentos y turismo.
+4. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
+5. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
+6. **Resto de la fase 2**: carreteras curvas.
 
 Cada fase nueva debe:
 - llevar tests propios;
@@ -112,12 +111,15 @@ Cada fase nueva debe:
 - **Tema del Ágora**: añadir una entrada en `TOPICS` (data/agora.ts) con su `detect` sobre datos reales. Si debe dar petición, se le añade `petition` con un objetivo medible en la casilla.
 - **Ordenanza**: añadir una entrada en `src/sim/data/ordinances.ts` con su coste mensual y sus modificadores (`happiness`, `crime`, `industryPollution`, `waterDemand`, `demand`, `taxIncome`); `effects.ts` los suma a los de los eventos y el panel de presupuesto la lista sola. Si necesita un modificador nuevo, se añade el campo y una función `effect...` en `effects.ts`.
 - **Departamento**: uno por `ServiceType` con cobertura (`data/departments.ts`). Su financiación (`economy.funding`, 50-150 %) escala el mantenimiento en `estimateBudget` y la cobertura en `computeInfluence`.
+- **Transporte público** (`systems/transit.ts`): cada red es un Dijkstra (`systems/paths.ts`) desde las paradas que tienen empleo a pie; el autobús va por las calles, el metro por la capa `metro` (túneles) y el tren en línea recta entre estaciones. `computeTraffic` reparte los trabajadores de cada vivienda entre coche y transporte con `transitShareFor`. Bajarse en la misma parada no cuenta como viaje, y las estaciones no tienen plantilla (si la tuvieran serían el empleo más cercano de su barrio). Un modo nuevo: añadir `TransitMode`, su red en `planTransit` y su espera en `TRANSIT_WAIT`.
 - **Ajuste del jugador**: añadir una entrada en `SETTING_FIELDS` (ui/settings.ts) y aplicarla en `main.ts`.
 
 ## Continuar en otro PC
 
-El repositorio **aún no tiene ningún commit**. Para llevar el proyecto a otro equipo:
-1. hacer un commit y un push a un remoto, o bien copiar la carpeta sin `node_modules/` ni `dist/`;
-2. en el equipo nuevo, ejecutar `npm install` y después `npm test` para comprobar que todo está en verde.
+El repositorio está en GitHub (`ItsDenaos/city-builder`, rama `master`). Para llevar el proyecto a otro equipo:
+1. clonarlo (o copiar la carpeta sin `node_modules/` ni `dist/`);
+2. ejecutar `npm install` y después `npm test` para comprobar que todo está en verde.
+
+Commits: siempre con la identidad de git del usuario y sin línea `Co-Authored-By`.
 
 La memoria de Claude de cada equipo es local; las preferencias importantes están en este archivo.

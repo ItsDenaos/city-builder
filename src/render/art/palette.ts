@@ -71,6 +71,9 @@ export const WORLD = {
   unserved: 'rgba(229, 128, 111, 0.68)',
   pipe: DATA.water,
   noPower: DATA.power,
+  tunnel: DATA.transit,
+  transitStop: 'rgba(217, 137, 91, 0.85)',
+  transitCovered: 'rgba(217, 137, 91, 0.2)',
 
   // Emblemas de servicios sobre el tejado
   emblem: BRAND.gold,
@@ -123,6 +126,14 @@ export const CIVIC = {
   fountain: '#6FA8C4',
   turbine: '#F1EFEA',
   turbineHub: '#9AA4AB',
+  // Transporte: muros de mármol y tejados con el matiz de cada modo
+  shelterWall: '#E7E2D8',
+  shelterRoof: '#B86B4B',
+  metroWall: '#E3E4E2',
+  metroRoof: '#4F7393',
+  stationWall: '#E9E3D6',
+  stationRoof: '#6E6585',
+  stationTower: '#D8D0C0',
   smoke: '225, 225, 222',
 } as const;
 

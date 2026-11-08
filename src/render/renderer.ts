@@ -13,7 +13,8 @@ import { WORLD } from './art/palette';
 import type { Frame } from './art/util';
 import { drawCars } from './art/vehicles';
 import type { Camera } from './camera';
-import { BRAND, FONTS, UI } from '../theme';
+import { TRANSIT_MAX_SHARE } from '../sim/config';
+import { BRAND, DATA, FONTS, UI } from '../theme';
 
 /** Píxeles que sube una casilla de altura, por píxel de casilla (perspectiva cenital con volumen). */
 const HEIGHT_SCALE = 0.55;
@@ -25,7 +26,7 @@ const COLORS = WORLD;
 const TABLE_GRID = 4;
 
 export type HeatOverlay = 'pollution' | 'crime' | 'landValue' | 'happiness' | 'police' | 'fire' | 'health' | 'education' | 'park';
-export type Overlay = 'none' | 'power' | 'water' | 'traffic' | HeatOverlay;
+export type Overlay = 'none' | 'power' | 'water' | 'traffic' | 'transit' | HeatOverlay;
 
 type Ramp = (v: number) => string;
 const rgbOf = (hex: string) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
@@ -59,6 +60,7 @@ const HEAT_RAMPS: Record<HeatOverlay, Ramp> = {
   park: quantized(alphaRamp('#86B89A')),
 };
 const trafficRamp = quantized(scoreRamp);
+const transitRamp = quantized(alphaRamp(DATA.transit));
 
 const isConsumer = (map: GameMap, i: number) => map.lotLevel[i] > 0 || map.building[i] !== NO_BUILDING;
 
@@ -71,6 +73,17 @@ function overlayColor(state: GameState, overlay: Overlay): ((i: number) => strin
   }
   if (overlay === 'power') {
     return (i) => (!conductsPower(map, i) ? null : layers.powered[i] ? COLORS.served : COLORS.unserved);
+  }
+  if (overlay === 'transit') {
+    // Viviendas según cuántos van en transporte, paradas en servicio y su radio a pie
+    return (i) => {
+      if (map.zoneType[i] === ZONE_CODE.R && map.lotLevel[i] && layers.transitShare[i] > 0) return transitRamp((layers.transitShare[i] / TRANSIT_MAX_SHARE) * 100);
+      const id = map.building[i];
+      if (id !== NO_BUILDING && getBuildingDef(state.buildings.get(id)?.defId ?? '')?.transit) {
+        return layers.transitStops.has(id) ? COLORS.transitStop : COLORS.unserved;
+      }
+      return layers.transitCoverage[i] ? COLORS.transitCovered : null;
+    };
   }
   if (overlay === 'water') {
     return (i) => (isConsumer(map, i) ? (layers.watered[i] ? COLORS.waterServed : COLORS.unserved) : layers.watered[i] ? COLORS.waterCovered : null);
@@ -152,7 +165,8 @@ export class Renderer {
     }
     drawLand(f, !!view.landTool, view.hover);
     if (view.districts) this.drawDistricts(f);
-    if (view.overlay === 'water') this.drawPipes(f);
+    if (view.overlay === 'water') this.drawNetwork(f, state.map.waterPipe, COLORS.pipe);
+    if (view.overlay === 'transit') this.drawNetwork(f, state.map.metro, COLORS.tunnel);
     if (!flat) this.drawNoPowerMarks(f);
 
     // Previsualización de la herramienta
@@ -222,24 +236,24 @@ export class Renderer {
     }
   }
 
-  /** Las tuberías son subterráneas: solo se ven en la vista de agua. */
-  private drawPipes(f: Frame): void {
+  /** Tuberías y túneles son subterráneos: solo se ven en su vista de datos (agua y transporte). */
+  private drawNetwork(f: Frame, layer: Uint8Array, color: string): void {
     const { ctx, state, vis, px, py, s } = f;
     const { map } = state;
-    ctx.strokeStyle = COLORS.pipe;
+    ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(2, s * 0.25);
     ctx.lineCap = 'round';
     ctx.beginPath();
     for (let y = vis.y0; y <= vis.y1; y++) {
       for (let x = vis.x0; x <= vis.x1; x++) {
-        if (!map.waterPipe[y * map.width + x]) continue;
+        if (!layer[y * map.width + x]) continue;
         const cx = (px(x) + px(x + 1)) / 2;
         const cy = (py(y) + py(y + 1)) / 2;
         let linked = false;
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
           const nx = x + dx;
           const ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height || !map.waterPipe[ny * map.width + nx]) continue;
+          if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height || !layer[ny * map.width + nx]) continue;
           ctx.moveTo(cx, cy);
           ctx.lineTo(cx + (dx * s) / 2, cy + (dy * s) / 2);
           linked = true;

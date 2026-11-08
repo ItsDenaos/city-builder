@@ -7,11 +7,12 @@ import { type BuildingInstance, type GameMap, type GameState, createGame, newAgo
  * v2: progreso con rango, logros y contadores; terreno por parcelas; escenarios.
  * v3: modo libre, primeros pasos, eventos y desastres (capa de incendios), Ágora y elecciones.
  * v4: financiación por departamento, ordenanzas y distritos con nombre.
+ * v5: transporte público (capa de túneles de metro y financiación del transporte).
  */
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 // Capas del mapa que se guardan; las derivadas (acceso, redes, influencia, tráfico) se recalculan al cargar.
-const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire'] as const;
+const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro'] as const;
 type MapLayer = (typeof MAP_LAYERS)[number];
 
 export interface SaveMeta {
@@ -98,7 +99,7 @@ export function deserialize(data: unknown): GameState {
   state.tutorial ??= null;
   state.incidents = { ...newIncidents(0), ...(rest as Partial<GameState>).incidents };
   state.agora = { ...newAgora(state.seed, false), ...(rest as Partial<GameState>).agora };
-  // Partidas v1-v3: sin financiación por departamento, ordenanzas ni distritos
+  // Partidas v1-v3: sin financiación por departamento, ordenanzas ni distritos (v1-v4: sin la del transporte)
   state.economy.funding = { ...newFunding(), ...state.economy.funding };
   state.economy.ordinances ??= [];
   state.districts ??= [];

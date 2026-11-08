@@ -102,6 +102,21 @@ function placedBoxes(def: BuildingDef): Box[] {
         { dx: 0.1, dy: 0.1, w: 1.8, d: 1.8, h: 0, wall: CIVIC.plaza, roof: CIVIC.plaza, kind: 'paving' },
         { dx: 0.75, dy: 0.75, w: 0.5, d: 0.5, h: 0, wall: CIVIC.fountain, roof: CIVIC.fountain, kind: 'pool' },
       ];
+    case 'bus_stop':
+      // Marquesina: una losa baja con el tejado del color del autobús
+      return [{ dx: 0.14, dy: 0.34, w: 0.72, d: 0.32, h: 0.32, wall: CIVIC.shelterWall, roof: CIVIC.shelterRoof, kind: 'flat' }];
+    case 'metro_station':
+      // Pabellón de acceso con la M en el tejado y la boca de escalera delante
+      return [
+        { dx: 0.25, dy: 1.3, w: 0.7, d: 0.45, h: 0, wall: CIVIC.metroRoof, roof: CIVIC.metroRoof, kind: 'paving' },
+        { dx: 0.2, dy: 0.2, w: 1.6, d: 1.05, h: 0.55, wall: CIVIC.metroWall, roof: CIVIC.metroRoof, kind: 'flat', label: def.short },
+      ];
+    case 'train_station':
+      // Nave de andenes alargada y torre del reloj en la fachada
+      return [
+        { dx: 0.15, dy: 0.95, w: 2.7, d: 1.85, h: 0.85, wall: CIVIC.stationWall, roof: CIVIC.stationRoof, kind: 'flat', label: def.short },
+        { dx: 1.25, dy: 0.25, w: 0.5, d: 0.5, h: 1.9, wall: CIVIC.stationTower, roof: CIVIC.stationRoof, kind: 'flat' },
+      ];
     case 'park_small':
     case 'wind_turbine':
       return [];

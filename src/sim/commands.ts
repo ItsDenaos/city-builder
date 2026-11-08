@@ -12,6 +12,7 @@ import {
   MAX_DISTRICTS,
   MAX_LOANS,
   MAX_ORDINANCES,
+  METRO_TUNNEL_COST,
   PIPE_COST,
   POWER_LINE_COST,
   TAX_MAX,
@@ -19,9 +20,9 @@ import {
 } from './config';
 import { ROADS, ROAD_BY_CODE, type RoadKind } from './data/roads';
 import { DENSITY_CODE, ZONE_CODE, getZoneDef } from './data/zones';
-import { type BuildingDef, type ServiceType, getBuildingDef } from './data/buildings';
+import { type BuildingDef, getBuildingDef } from './data/buildings';
 import { autoNeighborhoodName } from './data/agora';
-import { DEPARTMENT_IDS } from './data/departments';
+import { DEPARTMENT_IDS, type DepartmentId } from './data/departments';
 import { getIncident } from './data/incidents';
 import { getOrdinance } from './data/ordinances';
 import { clipRect, gridPositions, normalizeRect, roadPath } from './geometry';
@@ -47,11 +48,14 @@ export type Command =
   | { type: 'buildPowerLine'; from: Point; to: Point }
   | { type: 'buildPipe'; from: Point; to: Point }
   | { type: 'removePipe'; rect: Rect }
+  /** Túnel de metro (subterráneo, como las tuberías): une las estaciones que toca. */
+  | { type: 'buildMetro'; from: Point; to: Point }
+  | { type: 'removeMetro'; rect: Rect }
   | { type: 'bulldoze'; rect: Rect }
   | { type: 'setSpeed'; speed: Speed }
   | { type: 'setTaxRate'; zone: ZoneType; rate: number }
   /** Financiación de un departamento, en % (múltiplo de FUNDING_STEP entre FUNDING_MIN y FUNDING_MAX). */
-  | { type: 'setFunding'; dept: ServiceType; value: number }
+  | { type: 'setFunding'; dept: DepartmentId; value: number }
   /** Activa o deroga una ordenanza. */
   | { type: 'toggleOrdinance'; id: string }
   /** Distrito con nombre sobre un rectángulo; sin `name` toma el del barrio donde cae. */
@@ -120,6 +124,10 @@ function plan(state: GameState, cmd: Command): Plan {
       return planPipe(state, cmd.from, cmd.to);
     case 'removePipe':
       return planRemovePipe(state, cmd.rect);
+    case 'buildMetro':
+      return planMetro(state, cmd.from, cmd.to);
+    case 'removeMetro':
+      return planRemoveMetro(state, cmd.rect);
     case 'bulldoze':
       return planBulldoze(state, cmd.rect);
     case 'setSpeed':
@@ -383,12 +391,45 @@ function planRemovePipe(state: GameState, rect: Rect): Plan {
   };
 }
 
+/** Los túneles se desbloquean con la estación de metro. */
+const metroUnlock = () => getBuildingDef('metro_station')?.unlockAtPopulation ?? 0;
+
+function planMetro(state: GameState, from: Point, to: Point): Plan {
+  const { map } = state;
+  if (!isUnlocked(state, metroUnlock())) return fail(`Se desbloquea con ${metroUnlock().toLocaleString('es-ES')} habitantes`);
+  const toBuild: number[] = [];
+  for (const p of roadPath(from, to)) {
+    if (!inBounds(map, p.x, p.y)) return fail('Fuera del mapa');
+    if (!ownsTile(state, p.x, p.y)) return fail(NOT_OWNED);
+    const i = tileIndex(map, p.x, p.y);
+    if (!map.metro[i]) toBuild.push(i);
+  }
+  if (!toBuild.length) return fail('Ya hay túnel de metro');
+  return {
+    result: ok(toBuild.length * METRO_TUNNEL_COST, toBuild.length),
+    apply: () => toBuild.forEach((i) => (map.metro[i] = 1)),
+  };
+}
+
+function planRemoveMetro(state: GameState, rect: Rect): Plan {
+  const { map } = state;
+  const tiles: number[] = [];
+  const skipped = forEachTile(state, rect, (i) => {
+    if (map.metro[i]) tiles.push(i);
+  });
+  if (!tiles.length) return fail(skipped ? NOT_OWNED : 'No hay túneles aquí');
+  return {
+    result: ok(tiles.length * BULLDOZE_TILE_COST, tiles.length),
+    apply: () => tiles.forEach((i) => (map.metro[i] = 0)),
+  };
+}
+
 function planTax(state: GameState, zone: ZoneType, rate: number): Plan {
   if (!Number.isInteger(rate) || rate < TAX_MIN || rate > TAX_MAX) return fail(`El impuesto va de ${TAX_MIN}% a ${TAX_MAX}%`);
   return { result: ok(0, 1), apply: () => void (state.economy.taxes[zone] = rate) };
 }
 
-function planFunding(state: GameState, dept: ServiceType, value: number): Plan {
+function planFunding(state: GameState, dept: DepartmentId, value: number): Plan {
   if (!DEPARTMENT_IDS.includes(dept)) return fail('Departamento desconocido');
   if (!Number.isInteger(value) || value < FUNDING_MIN || value > FUNDING_MAX || value % FUNDING_STEP !== 0) {
     return fail(`La financiación va del ${FUNDING_MIN} % al ${FUNDING_MAX} %, de ${FUNDING_STEP} en ${FUNDING_STEP}`);

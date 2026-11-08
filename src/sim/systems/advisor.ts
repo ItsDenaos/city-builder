@@ -98,7 +98,9 @@ export function advise(state: GameState, events: SimEvent[]): void {
     if (avg.health < LOW_COVERAGE) advice.push('Los vecinos no tienen atención médica cerca: construye una clínica.');
     if (avg.education < LOW_COVERAGE) advice.push('Faltan escuelas: sin educación la industria no progresa.');
     if (avg.fire < LOW_COVERAGE) advice.push('Muchos barrios no tienen bomberos cerca.');
-    if (stats.traffic.congestedShare > CONGESTED_SHARE) advice.push('Hay atascos: construye avenidas o rutas alternativas.');
+    if (stats.traffic.congestedShare > CONGESTED_SHARE) advice.push(
+      stats.transit.riders ? 'Hay atascos: construye avenidas o lleva el transporte público a más barrios.' : 'Hay atascos: construye avenidas, rutas alternativas o paradas de autobús.',
+    );
     if (stats.traffic.avgCommute > LONG_COMMUTE) advice.push('Los trayectos al trabajo son largos: acerca empleos y viviendas.');
     if (stats.happiness < LOW_HAPPINESS) advice.push('Los habitantes están descontentos: mejora servicios y parques.');
   }

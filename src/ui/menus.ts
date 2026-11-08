@@ -1,6 +1,6 @@
 import { SELECT_TOOL, type Tool } from '../input/tools';
 import type { Command } from '../sim/commands';
-import { BULLDOZE_TILE_COST, PIPE_COST, POWER_LINE_COST } from '../sim/config';
+import { BULLDOZE_TILE_COST, METRO_TUNNEL_COST, PIPE_COST, POWER_LINE_COST } from '../sim/config';
 import { BUILDINGS, BUILDING_CATEGORIES, getBuildingDef } from '../sim/data/buildings';
 import { ROADS } from '../sim/data/roads';
 import { ZONES, getZoneDef } from '../sim/data/zones';
@@ -29,7 +29,7 @@ export interface MenuCategory {
   items: MenuItem[];
 }
 
-const CATEGORY_ICONS: Record<string, IconName> = { power: 'pylon', water: 'drop', services: 'services', parks: 'park' };
+const CATEGORY_ICONS: Record<string, IconName> = { power: 'pylon', water: 'drop', services: 'services', parks: 'park', transport: 'bus' };
 
 export const formatMoney = (n: number) => `$${Math.round(n).toLocaleString('es-ES')}`;
 
@@ -41,6 +41,15 @@ const NETWORK_TOOLS: Partial<Record<string, MenuItem[]>> = {
   water: [
     { label: 'Tubería', tool: { kind: 'pipe' }, cost: `${formatMoney(PIPE_COST)}/casilla`, unlockAtPopulation: 0, color: DATA.water },
     { label: 'Quitar tubería', tool: { kind: 'removePipe' }, cost: `${formatMoney(BULLDOZE_TILE_COST)}/casilla`, unlockAtPopulation: 0, icon: 'demolish' },
+  ],
+};
+
+// Herramientas de red que van detrás: en el transporte primero se colocan las estaciones y luego se unen con túneles
+const METRO_UNLOCK = getBuildingDef('metro_station')?.unlockAtPopulation ?? 0;
+const TRAILING_TOOLS: Partial<Record<string, MenuItem[]>> = {
+  transport: [
+    { label: 'Túnel de metro', detail: 'une estaciones', tool: { kind: 'metro' }, cost: `${formatMoney(METRO_TUNNEL_COST)}/casilla`, unlockAtPopulation: METRO_UNLOCK, color: DATA.transit },
+    { label: 'Quitar túnel', tool: { kind: 'removeMetro' }, cost: `${formatMoney(BULLDOZE_TILE_COST)}/casilla`, unlockAtPopulation: METRO_UNLOCK, icon: 'demolish' },
   ],
 };
 
@@ -93,7 +102,7 @@ export const MENUS: readonly MenuCategory[] = [
       cost: formatMoney(b.cost),
       unlockAtPopulation: b.unlockAtPopulation,
       color: b.color,
-    }))],
+    })), ...(TRAILING_TOOLS[c.id] ?? [])],
   })),
   {
     id: 'land',
@@ -142,6 +151,10 @@ export function commandLabel(cmd: Command): string {
       return 'Tubería';
     case 'removePipe':
       return 'Quitar tubería';
+    case 'buildMetro':
+      return 'Túnel de metro';
+    case 'removeMetro':
+      return 'Quitar túnel';
     case 'bulldoze':
       return 'Demolición';
     case 'buyPlot':

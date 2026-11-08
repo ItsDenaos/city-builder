@@ -4,11 +4,11 @@ import { refreshDerived } from './simulation';
 import type { BuildingInstance, GameState } from './state';
 
 // Capas que cambian los comandos (el relieve no lo cambia ninguno)
-const LAYERS = ['road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire'] as const;
+const LAYERS = ['road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro'] as const;
 
 /** Lo que cambia la ciudad; impuestos, préstamos y velocidad no se deshacen. */
 const UNDOABLE: ReadonlySet<Command['type']> = new Set([
-  'buildRoad', 'zone', 'dezone', 'placeBuilding', 'buildPowerLine', 'buildPipe', 'removePipe', 'bulldoze', 'buyPlot',
+  'buildRoad', 'zone', 'dezone', 'placeBuilding', 'buildPowerLine', 'buildPipe', 'removePipe', 'buildMetro', 'removeMetro', 'bulldoze', 'buyPlot',
 ]);
 
 interface Snapshot {

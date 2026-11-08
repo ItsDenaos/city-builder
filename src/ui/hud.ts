@@ -48,6 +48,7 @@ const OVERLAYS: { id: Overlay; label: string }[] = [
   { id: 'power', label: 'Electricidad' },
   { id: 'water', label: 'Agua' },
   { id: 'traffic', label: 'Tráfico' },
+  { id: 'transit', label: 'Transporte público' },
   { id: 'landValue', label: 'Valor del suelo' },
   { id: 'pollution', label: 'Contaminación' },
   { id: 'crime', label: 'Crimen' },
@@ -127,7 +128,7 @@ export class Hud {
   private jobs = new Metric('jobs', 'Paro: población activa sin empleo');
   private power = new Metric('bolt', 'Electricidad: consumo / producción');
   private water = new Metric('drop', 'Agua: consumo / producción');
-  private traffic = new Metric('traffic', 'Vías saturadas y trayecto medio al trabajo');
+  private traffic = new Metric('traffic', 'Vías saturadas, trayecto medio al trabajo y viajes en transporte público');
   private demandBars = new Map<ZoneType, HTMLElement>();
   private date = el('span', 'num');
   private speedButtons = new Map<Speed, HTMLButtonElement>();
@@ -439,7 +440,12 @@ export class Hud {
     this.power.set(`${n(utilities.power.demand)} / ${n(utilities.power.production)}`, 'MW', utilities.power.demand > utilities.power.production ? 'negative' : undefined);
     this.water.set(`${n(utilities.water.demand)} / ${n(utilities.water.production)}`, 'agua', utilities.water.demand > utilities.water.production ? 'negative' : undefined);
     const tr = st.traffic;
-    this.traffic.set(`${Math.round(tr.congestedShare * 100)} %`, `trayecto ${n(tr.avgCommute)}`, tr.congestedShare > 0.1 ? 'warning' : undefined);
+    const transitPct = Math.round(st.transit.share * 100);
+    this.traffic.set(
+      `${Math.round(tr.congestedShare * 100)} %`,
+      transitPct ? `trayecto ${n(tr.avgCommute)} · ${transitPct} % en transporte` : `trayecto ${n(tr.avgCommute)}`,
+      tr.congestedShare > 0.1 ? 'warning' : undefined,
+    );
     for (const [z, bar] of this.demandBars) {
       // Hacia arriba con demanda positiva, hacia abajo con negativa. La demanda habitual ronda 0,1-0,3:
       // se amplía para que se lea, y a partir de 0,4 la media barra queda llena.
