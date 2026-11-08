@@ -6,7 +6,7 @@ import './styles/menu.css';
 import { InputController } from './input/controller';
 import { SELECT_TOOL, STRIP_DEPTHS, type Tool, type ToolOptions, toolCommand, toolOverlay, toolPreviewTiles } from './input/tools';
 import { Camera } from './render/camera';
-import { Renderer, type ViewState } from './render/renderer';
+import { Renderer, type ViewState, rebuildRamps } from './render/renderer';
 import { AutoPlayer } from './sim/autoplayer';
 import { type Command, type CommandResult, applyCommand, previewCommand } from './sim/commands';
 import { MS_PER_DAY } from './sim/config';
@@ -20,15 +20,24 @@ import { type GameState, createGame, inBounds, tileIndex } from './sim/state';
 import { UndoHistory } from './sim/undo';
 import { roadStrip } from './sim/zoning';
 import type { Point, SimEvent, Speed } from './sim/types';
-import { applyTheme } from './theme';
+import { applyTheme, setColorVision } from './theme';
 import { Hud } from './ui/hud';
 import { rankEmblemSVG } from './ui/brand';
 import { commandLabel, formatMoney } from './ui/menus';
 import { Menu } from './ui/menu';
 import { Modal } from './ui/modal';
-import { applySettings, loadSettings, markTutorialDone, saveSettings } from './ui/settings';
+import { COLOR_VISION_MODES, applySettings, loadSettings, markTutorialDone, saveSettings } from './ui/settings';
 import { AUTOSAVE_SLOT, exportToFile, saveToSlot } from './ui/storage';
 import { installTooltips } from './ui/tooltip';
+import { setLanguage } from './ui/i18n';
+import { type Ambient, daylight, hourLabel, lightning } from './render/ambient';
+import { SEASON_LABEL, WEATHER, type WeatherKind, seasonOf } from './sim/data/weather';
+import { Sound } from './ui/audio';
+import { type Citizen, FollowCard, citizenPosition, pickCitizen } from './ui/follow';
+import type { IconName } from './ui/icons';
+import { PHOTO_HOURS, PhotoBar, downloadCanvas } from './ui/photo';
+import { SimClient, type StateUpdate, createSimWorker } from './simClient';
+import type { RedoOutcome, UndoOutcome } from './sim/undo';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 /** Ciudad de demostración del menú principal: siempre el mismo mapa, con lagos. */
@@ -36,10 +45,19 @@ const DEMO_SEED = 42;
 /** Tiempo por fotograma que puede usar la demostración para simular (ms) y días como máximo. */
 const DEMO_BUDGET_MS = 5;
 const DEMO_MAX_DAYS_PER_FRAME = 12;
+/** Un día del reloj de ambiente (fase 20) dura esto en tiempo real, a cualquier velocidad; se para en pausa. */
+const DAY_CYCLE_MS = 240_000;
+/** Días que se piden de una vez al worker de la simulación como mucho (fase 21). */
+const MAX_DAYS_PER_REQUEST = 5;
+const WEATHER_ICON: Record<WeatherKind, IconName> = { clear: 'sun', clouds: 'cloud', rain: 'rain', storm: 'storm', fog: 'fog', snow: 'snow' };
+const BUILD_CUES = new Set<Command['type']>(['buildRoad', 'zone', 'placeBuilding', 'buildPowerLine', 'buildPipe', 'buildMetro', 'createDistrict', 'buyPlot', 'terraform']);
+const DEMOLISH_CUES = new Set<Command['type']>(['bulldoze', 'dezone', 'removePipe', 'removeMetro']);
 
 applyTheme();
 const settings = loadSettings();
 applySettings(settings);
+setColorVision(COLOR_VISION_MODES[settings.colorVision] ?? 'normal');
+setLanguage(settings.language === 1 ? 'en' : 'es');
 const uiRoot = document.getElementById('ui')!;
 installTooltips(uiRoot);
 
@@ -58,23 +76,54 @@ let selected: Point | null = null;
 let speedBeforePause: Speed = 1;
 const toolOptions: ToolOptions = { strip: 3 };
 const history = new UndoHistory();
+/** Simulación en segundo plano (fase 21); null si el navegador no puede o si falló: entonces corre aquí. */
+let sim: SimClient | null = null;
+/** Hora del día (0-1) del reloj de ambiente: empieza por la mañana. */
+let dayClock = 0.35;
+let lastFlash = 0;
+/** Vecino al que sigue la cámara (fase 20). */
+let citizen: Citizen | null = null;
+const sound = new Sound();
+sound.setVolume(settings.volume);
+// Los navegadores solo dejan sonar algo después de que el jugador toque la página
+window.addEventListener('pointerdown', () => sound.unlock());
+window.addEventListener('keydown', () => sound.unlock());
 
 function run(cmd: Command): CommandResult {
-  const result = demo ? applyCommand(state, cmd) : history.run(state, cmd);
+  // Con la simulación en segundo plano, la orden se aplica aquí al momento y también allí (con su deshacer)
+  let result: CommandResult;
+  if (demo) result = applyCommand(state, cmd);
+  else if (sim) {
+    result = applyCommand(state, cmd);
+    if (result.ok) sim.command(cmd);
+  } else result = history.run(state, cmd);
   if (!result.ok && result.reason) hud.flash(result.reason);
+  if (!demo) {
+    if (result.ok && BUILD_CUES.has(cmd.type)) sound.play('build');
+    else if (result.ok && DEMOLISH_CUES.has(cmd.type)) sound.play('demolish');
+    else if (!result.ok && result.reason) sound.play('error');
+  }
   if (result.ok && cmd.type === 'buyPlot') hud.notify(`Parcela comprada por ${formatMoney(result.cost)}`, 'unlock');
   return result;
 }
 
 function undo(): void {
-  const r = history.undo(state);
+  if (sim) sim.undo();
+  else reportUndo(history.undo(state));
+}
+
+function redo(): void {
+  if (sim) sim.redo();
+  else reportRedo(history.redo(state));
+}
+
+function reportUndo(r: UndoOutcome): void {
   if (!r.ok) return hud.flash(r.reason);
   const partial = r.restored < r.total ? ` (${r.restored} de ${r.total} casillas: el resto ya ha cambiado)` : '';
   hud.notify(`Deshecho: ${commandLabel(r.cmd)}${partial}${r.refund ? ` · ${formatMoney(r.refund)} devueltos` : ''}`);
 }
 
-function redo(): void {
-  const r = history.redo(state);
+function reportRedo(r: RedoOutcome): void {
   if (!r.ok) return hud.flash(r.reason);
   hud.notify(`Rehecho: ${commandLabel(r.cmd)}${r.result.cost && !state.sandbox ? ` · ${formatMoney(r.result.cost)}` : ''}`);
 }
@@ -103,7 +152,63 @@ function setState(next: GameState): void {
   camera.centerOn(c.x, c.y);
   if (state.time.speed === 0 && !state.economy.bankrupt) state.time.speed = 1;
   hud.reset();
+  stopFollow();
+  setPhoto(false);
+  startSim();
+  sim?.load(state);
   Object.assign(window, { game: { state, camera } });
+}
+
+// ---- Simulación en segundo plano (fase 21) ----
+
+/** Arranca el worker de la simulación la primera vez que hay partida (la demostración del menú corre aquí). */
+function startSim(): void {
+  if (sim) return;
+  const port = createSimWorker();
+  if (!port) return;
+  sim = new SimClient(port, applyUpdate, () => {
+    // Si el worker falla, la partida sigue aquí con la última copia
+    port.terminate?.();
+    sim = null;
+    history.clear();
+    hud.notify('La simulación en segundo plano ha fallado: sigue en esta pestaña', 'warning');
+  });
+}
+
+/** Llega un estado del worker: sustituye a la copia de aquí y se atienden sus eventos. */
+function applyUpdate(u: StateUpdate): void {
+  state = u.state;
+  Object.assign(window, { game: { state, camera } });
+  if (u.undo) reportUndo(u.undo);
+  if (u.redo) reportRedo(u.redo);
+  onEvents(u.events);
+}
+
+// ---- Seguir a un vecino y modo foto (fase 20) ----
+
+/** Empieza a seguir a un vecino: el de la vivienda seleccionada o uno al azar. */
+function startFollow(): void {
+  const next = pickCitizen(state, selected);
+  if (!next) return hud.flash('Todavía no vive nadie en la ciudad');
+  citizen = next;
+  selected = null;
+  tool = SELECT_TOOL;
+  hud.setModes(true, photoBar.open);
+}
+
+function stopFollow(): void {
+  citizen = null;
+  hud.setModes(false, photoBar.open);
+}
+
+function setPhoto(on: boolean): void {
+  photoBar.toggle(on);
+  uiRoot.classList.toggle('photo-mode', on);
+  if (on) {
+    tool = SELECT_TOOL;
+    selected = null;
+  }
+  hud.setModes(!!citizen, on);
 }
 
 function autosave(): void {
@@ -121,7 +226,7 @@ const hud = new Hud(uiRoot, {
   clearSelection: () => (selected = null),
   undo,
   redo,
-  history: () => ({ undo: history.canUndo, redo: history.canRedo }),
+  history: () => (sim ? { undo: sim.canUndo, redo: sim.canRedo } : { undo: history.canUndo, redo: history.canRedo }),
   getStrip: () => toolOptions.strip,
   setStrip: (depth) => (toolOptions.strip = depth),
   tutorialFinished: markTutorialDone,
@@ -129,7 +234,29 @@ const hud = new Hud(uiRoot, {
     camera.centerOn(t.x + 0.5, t.y + 0.5);
     selected = t;
   },
+  toggleFollow,
+  togglePhoto,
 });
+const followCard = new FollowCard(
+  () => startFollow(),
+  () => stopFollow(),
+);
+hud.addLeft(followCard.el);
+const photoBar = new PhotoBar(
+  () => downloadCanvas(canvas, state.name, state.time.year, state.time.month),
+  () => setPhoto(false),
+);
+uiRoot.append(photoBar.el);
+
+function toggleFollow(): void {
+  if (demo) return;
+  if (citizen) stopFollow();
+  else startFollow();
+}
+
+function togglePhoto(): void {
+  if (!demo) setPhoto(!photoBar.open);
+}
 
 const modal = new Modal();
 
@@ -164,6 +291,12 @@ const menu = new Menu({
     settings[key] = value;
     saveSettings(settings);
     applySettings(settings);
+    sound.setVolume(settings.volume);
+    if (key === 'colorVision') {
+      setColorVision(COLOR_VISION_MODES[settings.colorVision] ?? 'normal');
+      rebuildRamps();
+    }
+    if (key === 'language') setLanguage(settings.language === 1 ? 'en' : 'es');
   },
 });
 uiRoot.append(modal.el, menu.el);
@@ -189,12 +322,16 @@ const input = new InputController(canvas, camera, {
   toggleHelp: () => hud.toggleHelp(),
   toggleProgress: () => hud.toggleProgress(),
   toggleAgora: () => hud.toggleAgora(),
+  toggleFollow,
+  togglePhoto,
   blocked: () => menu.isOpen || modal.isOpen,
   edgeScroll: () => settings.edgeScroll === 1,
-  // Esc: atrás en el menú → suelta la herramienta → quita la selección → abre el menú de pausa
+  // Esc: atrás en el menú → sale del modo foto → deja de seguir → suelta la herramienta → quita la selección → menú de pausa
   cancelTool: () => {
     if (modal.isOpen) modal.dismiss();
     else if (menu.isOpen) menu.back();
+    else if (photoBar.open) setPhoto(false);
+    else if (citizen) stopFollow();
     else if (tool.kind !== 'select') tool = SELECT_TOOL;
     else if (selected) selected = null;
     else menu.openPause();
@@ -286,8 +423,15 @@ function onEvents(events: SimEvent[]): void {
   const rankUp = events.some((e) => e.type === 'rankUp');
   for (const e of events) {
     if (e.type === 'newYear') hud.notify(`Comienza el año ${e.year}`);
-    else if (e.type === 'rankUp') celebrateRank(e.rank, e.grant, e.unlocks);
-    else if (e.type === 'achievement') hud.notify(`Logro: ${e.name}`, 'unlock');
+    else if (e.type === 'rankUp') {
+      celebrateRank(e.rank, e.grant, e.unlocks);
+      sound.play('rank');
+    } else if (e.type === 'achievement') {
+      hud.notify(`Logro: ${e.name}`, 'unlock');
+      sound.play('achievement');
+    } else if (e.type === 'weather') {
+      hud.notify(e.kind === 'storm' ? 'Se acerca una tormenta: los rayos pueden provocar incendios' : 'Empieza a nevar', 'info');
+    }
     else if (e.type === 'scenarioEnd') scenarioEnded(e.id, e.won);
     else if (e.type === 'decision') showDecision();
     else if (e.type === 'fire') {
@@ -354,26 +498,79 @@ function frame(now: number): void {
   const msPerDay = MS_PER_DAY[state.time.speed];
   if (Number.isFinite(msPerDay) && !paused) {
     accumulator += dt;
-    while (accumulator >= msPerDay) {
-      accumulator -= msPerDay;
-      onEvents(tick(state));
+    if (sim && !demo) {
+      // En segundo plano: se piden los días que tocan y no se piden más hasta que lleguen (el dibujo no espera)
+      const days = Math.min(MAX_DAYS_PER_REQUEST, Math.floor(accumulator / msPerDay));
+      if (days > 0 && !sim.inFlight) {
+        sim.tick(days);
+        accumulator -= days * msPerDay;
+      }
+      accumulator = Math.min(accumulator, msPerDay * MAX_DAYS_PER_REQUEST);
+    } else {
+      while (accumulator >= msPerDay) {
+        accumulator -= msPerDay;
+        onEvents(tick(state));
+      }
     }
   } else {
     accumulator = 0;
   }
 
+  // Ambiente (fase 20): el reloj del día corre mientras corre la partida (y en la demostración del menú)
+  if (menu.isMain || (!paused && state.time.speed > 0)) dayClock = (dayClock + dt / DAY_CYCLE_MS) % 1;
+  const photo = photoBar.open;
+  const photoHour = photo ? PHOTO_HOURS[photoBar.hour] : null;
+  const ambient: Ambient = {
+    hour: photoHour ?? (settings.dayNight ? dayClock : 0.5),
+    weather: state.weather.kind,
+    still: settings.reducedMotion === 1,
+  };
+  const weather = WEATHER[state.weather.kind];
+  const night = 1 - daylight(ambient.hour).light;
+  hud.setAmbient(
+    settings.dayNight && !demo ? hourLabel(dayClock) : null,
+    { icon: WEATHER_ICON[weather.kind], label: weather.label, season: SEASON_LABEL[seasonOf(state.time.month)] },
+    night > 0.5,
+  );
+  const flash = lightning(ambient, now / 1000);
+  const trips = Math.min(1, state.stats.traffic.trips / 3_000);
+  sound.update({
+    activity: trips * Math.max(0.2, Math.min(1, camera.zoom / 3)),
+    weather: state.weather.kind,
+    night,
+    paused: paused || state.time.speed === 0,
+    flash: flash > 0.9 && lastFlash <= 0.9,
+  });
+  lastFlash = flash;
+
+  // El vecino al que se sigue: la cámara le acompaña (si su casa desaparece, se deja de seguir)
+  if (citizen && !state.map.lotLevel[citizen.home]) {
+    stopFollow();
+    hud.notify('El vecino al que seguías se ha mudado');
+  }
+  const followed = citizen ? citizenPosition(citizen, dayClock) : null;
+  if (followed && !paused) {
+    const cx = camera.x + camera.viewWidth / camera.scale / 2;
+    const cy = camera.y + camera.viewHeight / camera.scale / 2;
+    camera.centerOn(cx + (followed.x - cx) * 0.08, cy + (followed.y - cy) * 0.08);
+  }
+  followCard.show(state, citizen, dayClock);
+
   // Previsualización de la herramienta bajo el cursor
   let preview: CommandResult | null = null;
   const view: ViewState = {
-    hover: menu.isOpen ? null : input.hover,
-    selected,
+    hover: menu.isOpen || photo ? null : input.hover,
+    selected: photo ? null : selected,
     preview: null,
-    overlay: toolOverlay(tool) ?? hud.overlay,
-    grid: tool.kind !== 'select' && tool.kind !== 'land',
+    overlay: photo ? 'none' : (toolOverlay(tool) ?? hud.overlay),
+    grid: !photo && tool.kind !== 'select' && tool.kind !== 'land',
     landTool: tool.kind === 'land',
     districts: tool.kind === 'district',
+    ambient,
+    follow: followed && citizen && !photo ? { ...followed, label: citizen.name } : null,
+    tiltShift: photo && photoBar.tiltShift,
   };
-  if (input.hover && tool.kind !== 'select' && !menu.isOpen) {
+  if (input.hover && tool.kind !== 'select' && !menu.isOpen && !photo) {
     const start = input.dragStart ?? input.hover;
     const cmd = toolCommand(tool, start, input.hover, toolOptions);
     if (cmd) preview = previewCommand(state, cmd);

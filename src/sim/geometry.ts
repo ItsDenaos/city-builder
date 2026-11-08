@@ -37,6 +37,37 @@ export function gridPositions(r: Rect, w: number, h: number): Point[] {
   return pts;
 }
 
+/**
+ * Camino curvo entre dos casillas (fase 2, carreteras curvas): una curva de Bézier cuadrática con el punto de
+ * control en el codo del camino en «L», pasada a casillas unidas por un lado (en cada paso en diagonal se añade
+ * la casilla intermedia más cercana a la curva). Si las dos casillas están en la misma fila o columna, es recto.
+ */
+export function curvePath(from: Point, to: Point): Point[] {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (!dx || !dy) return roadPath(from, to);
+  const c = Math.abs(dx) >= Math.abs(dy) ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
+  const n = 4 * (Math.abs(dx) + Math.abs(dy));
+  const pts: Point[] = [{ x: from.x, y: from.y }];
+  for (let k = 1; k <= n; k++) {
+    const t = k / n;
+    const u = 1 - t;
+    const fx = u * u * from.x + 2 * u * t * c.x + t * t * to.x;
+    const fy = u * u * from.y + 2 * u * t * c.y + t * t * to.y;
+    const x = Math.round(fx);
+    const y = Math.round(fy);
+    const last = pts[pts.length - 1];
+    if (x === last.x && y === last.y) continue;
+    if (x !== last.x && y !== last.y) {
+      const a = { x, y: last.y };
+      const b = { x: last.x, y };
+      pts.push(Math.hypot(a.x - fx, a.y - fy) <= Math.hypot(b.x - fx, b.y - fy) ? a : b);
+    }
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
 /** Camino en "L" entre dos casillas; empieza por el eje con mayor distancia. */
 export function roadPath(from: Point, to: Point): Point[] {
   const dx = Math.sign(to.x - from.x);

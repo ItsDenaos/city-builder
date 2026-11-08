@@ -225,14 +225,21 @@ function boxShadow(f: Frame, X: number, Y: number, b: Box): void {
   ctx.fill();
 }
 
-function windows(f: Frame, x: number, top: number, w: number, h: number, color: string): void {
+/** Ventanas de una fachada; de noche (fase 20) apunta las que tienen luz, siempre las mismas para cada edificio. */
+function windows(f: Frame, x: number, top: number, w: number, h: number, color: string, seed: number): void {
   const { ctx, s } = f;
   const size = s * 0.09;
   const stepX = s * 0.19;
   const stepY = s * 0.22;
+  const salt = Math.floor(seed * 1e6);
   ctx.fillStyle = color;
+  let k = 0;
   for (let wy = top + s * 0.1; wy + size < top + h - s * 0.06; wy += stepY) {
-    for (let wx = x + s * 0.07; wx + size < x + w - s * 0.04; wx += stepX) ctx.fillRect(wx, wy, size, size);
+    for (let wx = x + s * 0.07; wx + size < x + w - s * 0.04; wx += stepX) {
+      ctx.fillRect(wx, wy, size, size);
+      if (f.lit > 0 && hash2(k, salt, 77) < f.lit) f.lights.push(wx, wy, size, size);
+      k++;
+    }
   }
 }
 
@@ -282,8 +289,8 @@ export function drawBox(f: Frame, X: number, Y: number, b: Box, seed = 0): void 
     ctx.fillStyle = shade(b.wall, 0.82);
     ctx.fillRect(x, faceY, W, H);
     if (detail && s >= 14 && H >= s * 0.3) {
-      if (b.kind === 'glass' || b.kind === 'crown') windows(f, x, faceY, W, H, M.windowGlass);
-      else if (b.kind === 'flat' || b.kind === 'house') windows(f, x, faceY, W, H, M.window);
+      if (b.kind === 'glass' || b.kind === 'crown') windows(f, x, faceY, W, H, M.windowGlass, seed + b.dx + b.dy);
+      else if (b.kind === 'flat' || b.kind === 'house') windows(f, x, faceY, W, H, M.window, seed + b.dx + b.dy);
       else if (b.kind === 'shop') {
         ctx.fillStyle = b.label ?? '#d9534f';
         ctx.fillRect(x, faceY, W, Math.max(2, H * 0.3)); // toldo

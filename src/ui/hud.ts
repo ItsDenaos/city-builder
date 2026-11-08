@@ -32,6 +32,10 @@ export interface HudActions {
   tutorialFinished(): void;
   /** Llevar la cámara a una casilla (botón «Ver» de los avisos). */
   focus(tile: Point): void;
+  /** Seguir a un vecino o dejar de seguirlo (fase 20). */
+  toggleFollow(): void;
+  /** Entrar o salir del modo foto (fase 20). */
+  togglePhoto(): void;
 }
 
 export type ToastTone = 'info' | 'unlock' | 'warning' | 'negative';
@@ -135,7 +139,12 @@ export class Hud {
   private date = el('span', 'num');
   private speedButtons = new Map<Speed, HTMLButtonElement>();
 
-  private railButtons: Record<'agora' | 'progress' | 'budget' | 'stats' | 'help', HTMLButtonElement>;
+  private railButtons: Record<'agora' | 'progress' | 'budget' | 'stats' | 'help' | 'follow' | 'photo', HTMLButtonElement>;
+  /** Columna izquierda (guía, vecino al que se sigue e inspector). */
+  private left = el('div', 'left-stack');
+  /** Hora y tiempo junto a la fecha (fase 20). */
+  private clock = el('span', 'tb-clock num');
+  private weatherIcon = el('span', 'tb-weather');
   private agora: AgoraPanel;
   private progress: ProgressPanel;
   private budget: BudgetPanel;
@@ -175,11 +184,14 @@ export class Hud {
     this.help = createHelpPanel(() => this.toggleHelp(false));
     this.progress = new ProgressPanel(() => this.toggleProgress(false));
     this.agora = new AgoraPanel(() => this.toggleAgora(false), (t) => actions.focus(t));
-    this.tutorial = new TutorialCard(() => actions.tutorialFinished());
+    this.tutorial = new TutorialCard(
+      () => actions.tutorialFinished(),
+      (tutorial) => actions.run({ type: 'setTutorial', tutorial }),
+    );
     const rail = this.buildRail();
     this.railButtons = rail.buttons;
     // A la izquierda, de arriba abajo: la guía (si la hay) y el inspector
-    const left = el('div', 'left-stack');
+    const left = this.left;
     left.append(this.tutorial.el, this.inspector);
     root.append(
       this.buildTopbar(),
@@ -234,7 +246,7 @@ export class Hud {
 
     const time = el('div', 'tb-time');
     const date = el('div', 'tb-date');
-    date.append(iconEl('calendar', 16), this.date);
+    date.append(iconEl('calendar', 16), this.date, this.clock, this.weatherIcon);
     const speeds = el('div', 'segmented');
     speeds.setAttribute('role', 'radiogroup');
     speeds.setAttribute('aria-label', 'Velocidad de la simulación');
@@ -269,8 +281,21 @@ export class Hud {
       budget: button('budget', 'Presupuesto', 'P', () => this.toggleBudget()),
       stats: button('stats', 'Estadísticas', 'E', () => this.toggleStats()),
       help: button('help', 'Controles', 'H', () => this.toggleHelp()),
+      follow: button('follow', 'Seguir a un vecino', 'V', () => this.actions.toggleFollow()),
+      photo: button('camera', 'Modo foto', 'M', () => this.actions.togglePhoto()),
     };
-    rail.append(button('menu', 'Menú: guardar, cargar o salir', 'Esc', () => this.actions.openMenu()), el('div', 'rail-sep'), buttons.agora, buttons.progress, buttons.budget, buttons.stats, buttons.help);
+    rail.append(
+      button('menu', 'Menú: guardar, cargar o salir', 'Esc', () => this.actions.openMenu()),
+      el('div', 'rail-sep'),
+      buttons.agora,
+      buttons.progress,
+      buttons.budget,
+      buttons.stats,
+      buttons.help,
+      el('div', 'rail-sep'),
+      buttons.follow,
+      buttons.photo,
+    );
     return { el: rail, buttons };
   }
 
@@ -629,6 +654,30 @@ export class Hud {
   }
 
   /** Al cambiar de partida: cerrar paneles y olvidar avisos de la anterior. */
+  /** Pone un elemento en la columna izquierda, entre la guía y el inspector (la ficha del vecino al que se sigue). */
+  addLeft(e: HTMLElement): void {
+    this.left.insertBefore(e, this.inspector);
+  }
+
+  /** Hora del día (null sin ciclo de día y noche) y tiempo, junto a la fecha. */
+  setAmbient(hour: string | null, weather: { icon: IconName; label: string; season: string }, night: boolean): void {
+    setText(this.clock, hour ? `· ${hour}` : '');
+    const key = `${weather.icon}:${night}`;
+    if (this.weatherIcon.dataset.key !== key) {
+      this.weatherIcon.dataset.key = key;
+      this.weatherIcon.innerHTML = '';
+      this.weatherIcon.append(iconEl(weather.icon === 'sun' && night ? 'moon' : weather.icon, 16));
+    }
+    this.weatherIcon.dataset.tip = `${weather.label} · ${weather.season}`;
+    this.weatherIcon.setAttribute('aria-label', weather.label);
+  }
+
+  /** Marca los botones de seguir y de modo foto, y oculta la interfaz en el modo foto. */
+  setModes(following: boolean, photo: boolean): void {
+    this.railButtons.follow.classList.toggle('is-active', following);
+    this.railButtons.photo.classList.toggle('is-active', photo);
+  }
+
   reset(): void {
     this.closeSidePanels();
     this.toasts.replaceChildren();

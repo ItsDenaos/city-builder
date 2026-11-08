@@ -17,6 +17,14 @@ export interface Frame {
   time: number;
   /** Nivel de detalle: false con mucho zoom de alejamiento. */
   detail: boolean;
+  /**
+   * Noche (fase 20): oscuridad 0-1 y fracción de ventanas encendidas. Los dibujos apuntan aquí las luces
+   * (x, y, ancho, alto en píxeles) y el ambiente las pinta después por encima de la oscuridad.
+   */
+  night: number;
+  lit: number;
+  lights: number[];
+  headlights: number[];
 }
 
 /** Número pseudoaleatorio estable en [0, 1) para una casilla: la misma casilla siempre se ve igual. */

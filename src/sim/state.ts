@@ -12,6 +12,7 @@ import {
 import { generateTerrain } from './mapgen';
 import type { ServiceType } from './data/buildings';
 import type { Funding } from './data/departments';
+import type { WeatherKind } from './data/weather';
 import { type LandState, setupLand } from './land';
 import type { TutorialState } from './tutorial';
 import type { Speed, ZoneType } from './types';
@@ -202,6 +203,15 @@ export interface Demography {
 }
 
 export const adultsOf = (d: Demography) => d.none + d.basic + d.higher;
+
+export interface Weather {
+  kind: WeatherKind;
+  /** Días que le quedan al tiempo actual. */
+  daysLeft: number;
+  rng: number;
+}
+
+export const newWeather = (seed: number): Weather => ({ kind: 'clear', daysLeft: 4, rng: (seed ^ 0x3e47) >>> 0 });
 
 /** La mezcla de llegada, con los estudios de una ciudad sin escuelas. */
 export function newDemography(): Demography {
@@ -482,6 +492,8 @@ export interface GameState {
   /** Educación y edades (fase 15): edades, estudios y empleo cualificado. Lo activa el menú, no los tests. */
   demographics: boolean;
   demography: Demography;
+  /** Clima (fase 20), con su propio generador para no alterar la simulación. */
+  weather: Weather;
   /** Primeros pasos en curso (null = sin guía). */
   tutorial: TutorialState | null;
   incidents: Incidents;
@@ -621,6 +633,7 @@ export function createGame(opts: NewGameOptions = {}): GameState {
     sanitation: !!opts.sanitation,
     demographics: !!opts.demographics,
     demography: newDemography(),
+    weather: newWeather(seed),
     tutorial: opts.tutorial ? { step: 0 } : null,
     incidents: newIncidents(opts.incidents ?? 0),
     agora: newAgora(seed, !!opts.elections && !opts.sandbox),

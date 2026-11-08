@@ -1,6 +1,6 @@
 import { RANKS } from '../sim/data/progression';
 import type { GameState } from '../sim/state';
-import { TUTORIAL, advanceTutorial } from '../sim/tutorial';
+import { TUTORIAL, type TutorialState, advanceTutorial } from '../sim/tutorial';
 import { icon } from './icons';
 
 const REFRESH_MS = 250;
@@ -17,7 +17,11 @@ export class TutorialCard {
   private lastRefresh = 0;
   private state: GameState | null = null;
 
-  constructor(private onFinish: () => void) {
+  /** `onChange` recibe la guía tal como queda (avanza o se cierra) para enviarla como comando. */
+  constructor(
+    private onFinish: () => void,
+    private onChange: (tutorial: TutorialState | null) => void = () => {},
+  ) {
     this.el.className = 'panel tutorial hidden';
     this.el.setAttribute('aria-label', 'Primeros pasos');
     this.el.setAttribute('aria-live', 'polite');
@@ -25,6 +29,7 @@ export class TutorialCard {
       const action = (e.target as HTMLElement).closest<HTMLElement>('[data-action]')?.dataset.action;
       if ((action === 'skip' || action === 'finish') && this.state) {
         this.state.tutorial = null;
+        this.onChange(null);
         this.lastKey = '';
         this.onFinish();
       }
@@ -42,6 +47,7 @@ export class TutorialCard {
     if (performance.now() - this.lastRefresh < REFRESH_MS) return;
     this.lastRefresh = performance.now();
     const advanced = advanceTutorial(state) !== null;
+    if (advanced) this.onChange(state.tutorial);
     const step = TUTORIAL[t.step];
     this.highlight = step?.highlight ?? null;
     const key = `${t.step}`;

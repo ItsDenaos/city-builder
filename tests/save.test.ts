@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from '../src/sim/commands';
-import { SAVE_VERSION, deserialize, serialize } from '../src/sim/save';
+import { SAVE_VERSION, deserialize, packBits, serialize, unpackBits } from '../src/sim/save';
 import { tick } from '../src/sim/simulation';
 import { type GameState, createGame } from '../src/sim/state';
 import { addServices, addWater, smallTown } from './helpers';
@@ -61,6 +61,37 @@ describe('guardar y cargar', () => {
     const { meta, version } = serialize(s);
     expect(version).toBe(SAVE_VERSION);
     expect(meta).toMatchObject({ name: 'Villa Prueba', population: s.stats.population, date: { year: s.time.year } });
+  });
+
+  it('comprime las capas sin perder nada (PackBits)', () => {
+    const cases: number[][] = [[], [5], [1, 2], [0, 0, 0], new Array(300).fill(0), new Array(129).fill(7), new Array(130).fill(7)];
+    // Bytes al azar (sin rachas) y mezclas de rachas y sueltos
+    let seed = 1;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) % 256;
+    cases.push(Array.from({ length: 1000 }, rnd));
+    cases.push(Array.from({ length: 2000 }, (_, i) => (i % 97 < 60 ? 0 : rnd() % 3)));
+    for (const c of cases) {
+      const bytes = Uint8Array.from(c);
+      const back = new Uint8Array(bytes.length);
+      unpackBits(packBits(bytes), back);
+      expect([...back]).toEqual(c);
+    }
+    expect(() => unpackBits(packBits(Uint8Array.from([1, 2, 3])), new Uint8Array(2))).toThrow('dañada');
+  });
+
+  it('las partidas guardadas ocupan mucho menos y las de antes (sin comprimir) se siguen cargando', () => {
+    const s = town();
+    const big = createGame({ width: 128, height: 128, flat: true, seed: 3 });
+    expect(JSON.stringify(serialize(big)).length).toBeLessThan(40_000);
+    // Formato v9: base64 de los bytes tal cual
+    const data = serialize(s);
+    const plain = (arr: ArrayBufferView) => btoa(String.fromCharCode(...new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength)));
+    for (const k of Object.keys(data.state.map.layers) as (keyof typeof data.state.map.layers)[]) data.state.map.layers[k] = plain(s.map[k]);
+    data.state.map.traffic = plain(s.layers.traffic);
+    data.version = 9;
+    const loaded = deserialize(JSON.parse(JSON.stringify(data)));
+    expect(loaded.map.lotOccupants).toEqual(s.map.lotOccupants);
+    expect(loaded.layers.traffic).toEqual(s.layers.traffic);
   });
 
   it('rechaza archivos que no son partidas o de versiones futuras', () => {

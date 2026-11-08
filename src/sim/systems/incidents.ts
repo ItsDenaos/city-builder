@@ -11,6 +11,7 @@ import { getBuildingDef } from '../data/buildings';
 import { INCIDENTS, breakablePlants, getIncident } from '../data/incidents';
 import { ZONE_CODE } from '../data/zones';
 import { random } from '../rng';
+import { currentWeather } from './weather';
 import type { GameState } from '../state';
 import type { SimEvent } from '../types';
 
@@ -44,6 +45,8 @@ function updateFires(state: GameState, events: SimEvent[]): void {
   const size = w * h;
   const cover = layers.coverage.fire;
   const wasBurning = incidents.burning > 0;
+  // El tiempo (fase 20): la lluvia frena el fuego y los rayos de las tormentas lo prenden
+  const weather = currentWeather(state);
 
   // 1. Los fuegos en curso: se apagan, se propagan o consumen el edificio
   const spread: number[] = [];
@@ -54,12 +57,12 @@ function updateFires(state: GameState, events: SimEvent[]): void {
       map.fire[i] = 0; // demolido o ya sin edificio
       continue;
     }
-    if (random(state) < (cover[i] / 100) * FIRE_EXTINGUISH) {
+    if (random(state) < (cover[i] / 100) * FIRE_EXTINGUISH * weather.extinguish) {
       map.fire[i] = 0;
       continue;
     }
     forNeighbors(w, h, i, (n) => {
-      if (map.lotLevel[n] && !map.fire[n] && random(state) < FIRE_SPREAD * (1 - cover[n] / 100)) spread.push(n);
+      if (map.lotLevel[n] && !map.fire[n] && random(state) < FIRE_SPREAD * weather.fireSpread * (1 - cover[n] / 100)) spread.push(n);
     });
     if (++map.fire[i] > FIRE_BURN_DAYS) {
       map.fire[i] = 0;
@@ -77,7 +80,7 @@ function updateFires(state: GameState, events: SimEvent[]): void {
   }
 
   // 2. Un incendio nuevo: se sortea uno por día con el riesgo total y se elige el lote por su riesgo
-  const chance = FIRE_DAILY_CHANCE[incidents.level] ?? 0;
+  const chance = (FIRE_DAILY_CHANCE[incidents.level] ?? 0) * weather.fireRisk;
   if (chance) {
     const risk = (i: number) =>
       map.lotLevel[i] && !map.fire[i]

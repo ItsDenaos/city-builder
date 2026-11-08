@@ -12,6 +12,9 @@ export const PIPE_COST = 5;
 export const BULLDOZE_TILE_COST = 1;
 export const BULLDOZE_LOT_COST = 5;
 export const BULLDOZE_BUILDING_COST = 50;
+/** Editor de terreno (fase 21): excavar tierra hasta dejar agua y rellenar agua hasta hacer tierra, por casilla. */
+export const TERRAFORM_DIG_COST = 15;
+export const TERRAFORM_FILL_COST = 40;
 
 /** Distancia máxima (en casillas, a pie) de una zona a una carretera conectada con el exterior. */
 export const ROAD_ACCESS_DISTANCE = 3;

@@ -1,6 +1,6 @@
 import { SELECT_TOOL, type Tool } from '../input/tools';
 import type { Command } from '../sim/commands';
-import { BULLDOZE_TILE_COST, METRO_TUNNEL_COST, PIPE_COST, POWER_LINE_COST } from '../sim/config';
+import { BULLDOZE_TILE_COST, METRO_TUNNEL_COST, PIPE_COST, POWER_LINE_COST, TERRAFORM_DIG_COST, TERRAFORM_FILL_COST } from '../sim/config';
 import { BUILDINGS, BUILDING_CATEGORIES, getBuildingDef } from '../sim/data/buildings';
 import { ROADS } from '../sim/data/roads';
 import { ZONES, getZoneDef } from '../sim/data/zones';
@@ -67,14 +67,17 @@ export const MENUS: readonly MenuCategory[] = [
     id: 'roads',
     label: 'Carreteras',
     icon: 'road',
-    items: Object.values(ROADS).map((r) => ({
-      label: r.name,
-      detail: `${r.capacity.toLocaleString('es-ES')} viajes/día`,
-      tool: { kind: 'road', road: r.kind } as Tool,
-      cost: `${formatMoney(r.cost)}/casilla`,
-      unlockAtPopulation: 0,
-      color: r.color,
-    })),
+    // Cada vía, recta (en «L») y en curva
+    items: Object.values(ROADS).flatMap((r) =>
+      [false, true].map((curve) => ({
+        label: curve ? `${r.name} curva` : r.name,
+        detail: `${r.capacity.toLocaleString('es-ES')} viajes/día`,
+        tool: (curve ? { kind: 'road', road: r.kind, curve: true } : { kind: 'road', road: r.kind }) as Tool,
+        cost: `${formatMoney(r.cost)}/casilla`,
+        unlockAtPopulation: 0,
+        color: r.color,
+      })),
+    ),
   },
   {
     id: 'zones',
@@ -86,7 +89,10 @@ export const MENUS: readonly MenuCategory[] = [
         tool: { kind: 'zone', zone: z.type, density: z.density } as Tool,
         cost: `${formatMoney(z.costPerTile)}/casilla`,
         unlockAtPopulation: z.unlockAtPopulation,
-        color: z.color,
+        // Se lee al abrir el menú: cambia con las paletas para daltonismo
+        get color() {
+          return z.color;
+        },
       })),
       { label: 'Quitar zona', tool: { kind: 'dezone' }, cost: 'gratis', unlockAtPopulation: 0, icon: 'demolish' },
     ],
@@ -109,6 +115,15 @@ export const MENUS: readonly MenuCategory[] = [
     label: 'Terrenos',
     icon: 'plot',
     items: [{ label: 'Comprar terreno', tool: { kind: 'land' }, cost: '', unlockAtPopulation: 0, icon: 'plot' }],
+  },
+  {
+    id: 'terrain',
+    label: 'Terreno',
+    icon: 'terrain',
+    items: [
+      { label: 'Excavar agua', detail: 'lagos y canales', tool: { kind: 'terrain', to: 'water' }, cost: `${formatMoney(TERRAFORM_DIG_COST)}/casilla`, unlockAtPopulation: 0, color: DATA.water },
+      { label: 'Rellenar tierra', detail: 'ganar terreno al agua', tool: { kind: 'terrain', to: 'land' }, cost: `${formatMoney(TERRAFORM_FILL_COST)}/casilla`, unlockAtPopulation: 0, icon: 'terrain' },
+    ],
   },
   {
     id: 'districts',
@@ -138,7 +153,7 @@ export function toolLabel(tool: Tool): string {
 export function commandLabel(cmd: Command): string {
   switch (cmd.type) {
     case 'buildRoad':
-      return ROADS[cmd.road ?? 'street'].name;
+      return `${ROADS[cmd.road ?? 'street'].name}${cmd.curve ? ' curva' : ''}`;
     case 'zone':
       return getZoneDef(cmd.zone, cmd.density).label;
     case 'dezone':
@@ -161,6 +176,8 @@ export function commandLabel(cmd: Command): string {
       return 'Compra de parcela';
     case 'createDistrict':
       return 'Distrito';
+    case 'terraform':
+      return cmd.to === 'water' ? 'Excavar agua' : 'Rellenar tierra';
     default:
       return 'Acción';
   }

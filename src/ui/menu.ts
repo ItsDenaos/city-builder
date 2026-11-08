@@ -4,6 +4,7 @@ import type { GameState } from '../sim/state';
 import { lockupHTML, symbolSVG } from './brand';
 import { type IconName, icon } from './icons';
 import { formatMoney } from './menus';
+import { translate } from './i18n';
 import { SETTING_FIELDS, type Settings, tutorialDone } from './settings';
 import { AUTOSAVE_SLOT, MANUAL_SLOTS, deleteSlot, importFromFile, listSlots, loadFromSlot } from './storage';
 
@@ -46,6 +47,7 @@ const MAP_SIZES = [
   { value: 64, label: 'Pequeño', detail: '64 × 64' },
   { value: 128, label: 'Mediano', detail: '128 × 128' },
   { value: 192, label: 'Grande', detail: '192 × 192' },
+  { value: 256, label: 'Enorme', detail: '256 × 256' },
 ];
 const TERRAINS = [
   { value: 0, label: 'Con lagos' },
@@ -300,7 +302,7 @@ export class Menu {
     const name = this.el.querySelector<HTMLInputElement>('#new-name')!.value.trim();
     const seed = Number(this.el.querySelector<HTMLInputElement>('#new-seed')!.value);
     this.actions.newGame({
-      name: name || 'Ciudad nueva',
+      name: name || translate('Ciudad nueva'),
       size: value('size'),
       seed: Number.isFinite(seed) && seed > 0 ? Math.floor(seed) : Math.floor(Math.random() * 1_000_000),
       flat: value('terrain') === 1,
@@ -374,7 +376,7 @@ export class Menu {
   private renderNewGame(): string {
     return `<div class="menu-heading"><span class="kicker">Nueva partida</span><h2 class="title">Funda tu ciudad</h2></div>
       <form class="menu-form">
-        <div class="field"><label class="kicker" for="new-name">Nombre de la ciudad</label><input id="new-name" maxlength="40" value="Ciudad nueva" /></div>
+        <div class="field"><label class="kicker" for="new-name">Nombre de la ciudad</label><input id="new-name" maxlength="40" value="${esc(translate('Ciudad nueva'))}" /></div>
         ${segmented('size', MAP_SIZES, 128, 'Tamaño del mapa')}
         ${segmented('terrain', TERRAINS, 0, 'Terreno')}
         ${segmented('mode', GAME_MODES, 0, 'Modo de juego')}

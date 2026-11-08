@@ -1,5 +1,6 @@
 import { type ServiceType, getBuildingDef } from '../sim/data/buildings';
 import { drawFires } from './art/fire';
+import { type Ambient, daylight, drawDarkness, drawWeather, litShare } from './ambient';
 import { ZONE_CODE } from '../sim/data/zones';
 import { type GameMap, type GameState, NO_BUILDING } from '../sim/state';
 import { roadCapacity } from '../sim/systems/traffic';
@@ -48,7 +49,7 @@ const quantized = (ramp: Ramp): Ramp => {
   const steps = Array.from({ length: 21 }, (_, k) => ramp(k * 5));
   return (v) => steps[Math.max(0, Math.min(20, Math.round(v / 5)))];
 };
-const HEAT_RAMPS: Record<HeatOverlay, Ramp> = {
+const buildHeatRamps = (): Record<HeatOverlay, Ramp> => ({
   pollution: quantized(alphaRamp('#A86B43')),
   crime: quantized(alphaRamp(UI.negative)),
   landValue: quantized(scoreRamp),
@@ -58,11 +59,19 @@ const HEAT_RAMPS: Record<HeatOverlay, Ramp> = {
   health: quantized(alphaRamp('#D08AAE')),
   education: quantized(alphaRamp(UI.gold)),
   park: quantized(alphaRamp('#86B89A')),
-};
-const trafficRamp = quantized(scoreRamp);
+});
+let HEAT_RAMPS = buildHeatRamps();
+let trafficRamp = quantized(scoreRamp);
 const transitRamp = quantized(alphaRamp(DATA.transit));
 const garbageRamp = quantized(alphaRamp(DATA.garbage));
-const wellnessRamp = quantized(scoreRamp);
+let wellnessRamp = quantized(scoreRamp);
+
+/** Rehace las rampas de las vistas de datos tras cambiar de paleta (daltonismo, fase 21). */
+export function rebuildRamps(): void {
+  HEAT_RAMPS = buildHeatRamps();
+  trafficRamp = quantized(scoreRamp);
+  wellnessRamp = quantized(scoreRamp);
+}
 
 const isConsumer = (map: GameMap, i: number) => map.lotLevel[i] > 0 || map.building[i] !== NO_BUILDING;
 
@@ -124,6 +133,12 @@ export interface ViewState {
   landTool?: boolean;
   /** Mostrar los contornos y nombres de los distritos (herramienta de distritos activa). */
   districts?: boolean;
+  /** Hora y tiempo (fase 20); sin él, o en las vistas de datos, siempre es de día y despejado. */
+  ambient?: Ambient;
+  /** Vecino al que sigue la cámara (fase 20): posición en casillas y nombre. */
+  follow?: { x: number; y: number; label: string } | null;
+  /** Modo foto (fase 20): desenfoque arriba y abajo, como en las fotos de maquetas. */
+  tiltShift?: boolean;
 }
 
 export class Renderer {
@@ -132,6 +147,8 @@ export class Renderer {
   private height = 0;
   private tileImage = new TileImage();
   private dpr = 1;
+  /** Lienzo de apoyo del desenfoque del modo foto (se crea la primera vez). */
+  private blur: HTMLCanvasElement | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!;
@@ -160,7 +177,14 @@ export class Renderer {
     const detail = s >= DETAIL_MIN_SCALE;
     // En las vistas de datos los edificios se aplanan para que el mapa de calor se lea bien
     const flat = view.overlay !== 'none';
-    const f: Frame = { ctx, state, vis, px, py, s, hs: flat || !detail ? 0 : s * HEIGHT_SCALE, time: timeMs / 1000, detail };
+    // De noche se apuntan las luces mientras se dibuja la ciudad y se pintan después, sobre la oscuridad
+    const ambient = flat ? undefined : view.ambient;
+    const night = ambient ? 1 - daylight(ambient.hour).light : 0;
+    const lit = ambient && detail ? litShare(ambient.hour) : 0;
+    const f: Frame = {
+      ctx, state, vis, px, py, s, hs: flat || !detail ? 0 : s * HEIGHT_SCALE, time: timeMs / 1000, detail,
+      night, lit, lights: [], headlights: [],
+    };
     const tint = overlayColor(state, view.overlay);
 
     this.drawTable(cam);
@@ -176,8 +200,11 @@ export class Renderer {
       drawPowerLines(f, (i) => conductsPower(map, i));
       drawCity(f);
       if (tint) this.drawTint(f, tint);
+      if (ambient) drawDarkness(f, ambient, this.width, this.height);
       drawFires(f);
     }
+    if (!detail && ambient) drawDarkness(f, ambient, this.width, this.height);
+    if (ambient) drawWeather(f, ambient, this.width, this.height);
     drawLand(f, !!view.landTool, view.hover);
     if (view.districts) this.drawDistricts(f);
     if (view.overlay === 'water') this.drawNetwork(f, state.map.waterPipe, COLORS.pipe);
@@ -192,6 +219,8 @@ export class Renderer {
 
     this.outlineTile(view.selected, COLORS.selected, px, py);
     this.outlineTile(view.hover, COLORS.hover, px, py);
+    if (view.follow) this.drawFollow(f, view.follow);
+    if (view.tiltShift) this.drawTiltShift();
 
   }
 
@@ -321,6 +350,71 @@ export class Renderer {
       const i = b.y * map.width + b.x;
       if (def?.power?.consumes && !powered[i]) mark(b.x + b.w - 1, b.y, i);
     }
+  }
+
+  /** El vecino al que se sigue: un punto con aro dorado y su nombre encima. */
+  private drawFollow(f: Frame, who: { x: number; y: number; label: string }): void {
+    const { ctx, s } = f;
+    const x = f.px(who.x);
+    const y = f.py(who.y);
+    const r = Math.max(4, s * 0.18);
+    ctx.save();
+    ctx.fillStyle = BRAND.slate;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = BRAND.gold;
+    ctx.fillStyle = BRAND.marble;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = `600 12px ${FONTS.body}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const tw = ctx.measureText(who.label).width + 12;
+    ctx.fillStyle = BRAND.slate;
+    ctx.fillRect(x - tw / 2, y - r - 24, tw, 18);
+    ctx.fillStyle = BRAND.gold;
+    ctx.fillRect(x - tw / 2, y - r - 8, tw, 2);
+    ctx.fillStyle = BRAND.marble;
+    ctx.fillText(who.label, x, y - r - 9);
+    ctx.restore();
+  }
+
+  /**
+   * Desenfoque de maqueta para el modo foto: copias borrosas de la imagen que se funden arriba y abajo,
+   * así la parte central parece una maqueta fotografiada de cerca.
+   */
+  private drawTiltShift(): void {
+    const { width: w, height: h } = this.canvas;
+    this.blur ??= document.createElement('canvas');
+    const blur = this.blur;
+    if (blur.width !== w || blur.height !== h) {
+      blur.width = w;
+      blur.height = h;
+    }
+    const b = blur.getContext('2d')!;
+    b.clearRect(0, 0, w, h);
+    b.filter = `blur(${Math.round(3 * this.dpr)}px)`;
+    b.drawImage(this.canvas, 0, 0);
+    b.filter = 'none';
+    // Solo se queda la parte borrosa de arriba y de abajo
+    b.globalCompositeOperation = 'destination-in';
+    const g = b.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.32, 'rgba(0,0,0,0)');
+    g.addColorStop(0.68, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,1)');
+    b.fillStyle = g;
+    b.fillRect(0, 0, w, h);
+    b.globalCompositeOperation = 'source-over';
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(blur, 0, 0);
+    ctx.restore();
   }
 
   /** Distritos del jugador: contorno discontinuo de mármol con su nombre en la esquina. */

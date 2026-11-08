@@ -1,6 +1,6 @@
 import { rankFor } from './data/progression';
 import { refreshDerived } from './simulation';
-import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newDemography, newEducationStats, newFunding, newGarbageStats, newHealthStats, newIncidents, newProgress, newTourismStats, newTransitStats } from './state';
+import { type BuildingInstance, type GameMap, type GameState, createGame, newAgora, newDemography, newEducationStats, newFunding, newGarbageStats, newHealthStats, newIncidents, newProgress, newTourismStats, newTransitStats, newWeather } from './state';
 
 /**
  * Súbela si cambia el formato y añade la migración en deserialize.
@@ -11,8 +11,10 @@ import { type BuildingInstance, type GameMap, type GameState, createGame, newAgo
  * v6: basura y salud (capa de basura, carga de los vertederos y financiación de residuos).
  * v7: educación y edades (reparto de la población por edades y estudios).
  * v8: monumentos y turismo (estadísticas de turismo).
+ * v9: clima.
+ * v10: capas comprimidas con PackBits (prefijo «p:»); las de antes, en base64 sin comprimir, se siguen leyendo.
  */
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 10;
 
 // Capas del mapa que se guardan; las derivadas (acceso, redes, influencia, tráfico) se recalculan al cargar.
 const MAP_LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro', 'garbage'] as const;
@@ -37,17 +39,85 @@ export interface SaveData {
   };
 }
 
-function toBase64(arr: ArrayBufferView): string {
-  const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+const DAMAGED = 'La partida está dañada: el tamaño de una capa no coincide.';
+const PACKED = 'p:';
+
+function bytesOf(arr: ArrayBufferView): Uint8Array {
+  return new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
 }
 
-function fromBase64(b64: string, target: Uint8Array | Uint16Array | Int32Array | Float32Array): void {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(target.buffer, target.byteOffset, target.byteLength);
-  if (binary.length !== bytes.length) throw new Error('La partida está dañada: el tamaño de una capa no coincide.');
+/**
+ * Compresión PackBits: una cabecera h y después h + 1 bytes tal cual (h < 128) o un byte que se repite 257 − h veces
+ * (h > 128). Las capas son casi todo ceros y rachas largas, así que una partida de 256 × 256 baja de 2 MB a unos
+ * cientos de KB, y escribirla en el almacenamiento del navegador ya no frena el dibujo.
+ */
+export function packBits(bytes: Uint8Array): Uint8Array {
+  const n = bytes.length;
+  const out = new Uint8Array(n + Math.ceil(n / 128) + 1);
+  let o = 0;
+  let i = 0;
+  while (i < n) {
+    let run = 1;
+    while (i + run < n && run < 128 && bytes[i + run] === bytes[i]) run++;
+    if (run >= 3) {
+      out[o++] = 257 - run;
+      out[o++] = bytes[i];
+      i += run;
+      continue;
+    }
+    // Bytes sueltos hasta la siguiente racha de tres iguales (o 128 como mucho)
+    const start = i;
+    while (i < n && i - start < 128 && !(i + 2 < n && bytes[i] === bytes[i + 1] && bytes[i] === bytes[i + 2])) i++;
+    out[o++] = i - start - 1;
+    out.set(bytes.subarray(start, i), o);
+    o += i - start;
+  }
+  return out.slice(0, o);
+}
+
+export function unpackBits(src: Uint8Array, target: Uint8Array): void {
+  let o = 0;
+  let i = 0;
+  while (i < src.length) {
+    const h = src[i++];
+    if (h < 128) {
+      const len = h + 1;
+      if (o + len > target.length || i + len > src.length) throw new Error(DAMAGED);
+      target.set(src.subarray(i, i + len), o);
+      i += len;
+      o += len;
+    } else if (h > 128) {
+      const len = 257 - h;
+      if (o + len > target.length || i >= src.length) throw new Error(DAMAGED);
+      target.fill(src[i++], o, o + len);
+      o += len;
+    }
+  }
+  if (o !== target.length) throw new Error(DAMAGED);
+}
+
+function encodeLayer(arr: ArrayBufferView): string {
+  return PACKED + bytesToBase64(packBits(bytesOf(arr)));
+}
+
+function decodeLayer(text: string, target: Uint8Array | Uint16Array | Int32Array | Float32Array): void {
+  const packed = text.startsWith(PACKED);
+  const binary = atob(packed ? text.slice(PACKED.length) : text);
+  const bytes = bytesOf(target);
+  if (packed) {
+    const src = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) src[i] = binary.charCodeAt(i);
+    unpackBits(src, bytes);
+    return;
+  }
+  // Partidas v1-v9: base64 sin comprimir
+  if (binary.length !== bytes.length) throw new Error(DAMAGED);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 }
 
@@ -65,14 +135,14 @@ export function saveMeta(state: GameState): SaveMeta {
 
 export function serialize(state: GameState): SaveData {
   const { map, layers, buildings, ...rest } = state;
-  const encoded = Object.fromEntries(MAP_LAYERS.map((k) => [k, toBase64(map[k])])) as Record<MapLayer, string>;
+  const encoded = Object.fromEntries(MAP_LAYERS.map((k) => [k, encodeLayer(map[k])])) as Record<MapLayer, string>;
   return {
     version: SAVE_VERSION,
     meta: saveMeta(state),
     // structuredClone evita que la partida guardada comparta objetos con la que sigue en juego
     state: structuredClone({
       ...rest,
-      map: { width: map.width, height: map.height, layers: encoded, traffic: toBase64(layers.traffic) },
+      map: { width: map.width, height: map.height, layers: encoded, traffic: encodeLayer(layers.traffic) },
       buildings: [...buildings.values()],
     }),
   };
@@ -90,7 +160,7 @@ export function deserialize(data: unknown): GameState {
   const state = createGame({ width: savedMap.width, height: savedMap.height, seed: rest.seed, flat: true });
   for (const k of MAP_LAYERS) {
     const layer = savedMap.layers[k];
-    if (layer) fromBase64(layer, (state.map as GameMap)[k]);
+    if (layer) decodeLayer(layer, (state.map as GameMap)[k]);
   }
   Object.assign(state, structuredClone(rest));
   // Partidas v1: el progreso solo tenía la población máxima; el resto toma valores iniciales
@@ -116,10 +186,12 @@ export function deserialize(data: unknown): GameState {
   state.demography = { ...newDemography(), ...(rest as Partial<GameState>).demography };
   state.stats.education = { ...newEducationStats(), ...state.stats.education };
   state.stats.tourism = { ...newTourismStats(), ...state.stats.tourism };
+  // Partidas v1-v8: sin clima; empieza despejado
+  state.weather = { ...newWeather(state.seed), ...(rest as Partial<GameState>).weather };
   state.nextDistrictId ??= 1;
   state.buildings = new Map(buildings.map((b) => [b.id, { ...b }]));
   const traffic = new Float32Array(savedMap.width * savedMap.height);
-  fromBase64(savedMap.traffic, traffic);
+  decodeLayer(savedMap.traffic, traffic);
   refreshDerived(state, traffic);
   return state;
 }

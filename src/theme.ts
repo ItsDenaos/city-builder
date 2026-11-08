@@ -1,4 +1,4 @@
-import { getZoneDef } from './sim/data/zones';
+import { ZONE_COLORS, getZoneDef, setZoneColors } from './sim/data/zones';
 
 /**
  * Sistema de diseño de AKROPOLIS: única fuente de colores, tipografía y medidas.
@@ -79,6 +79,67 @@ export const FONTS = {
   display: "'Sora', 'Segoe UI', system-ui, sans-serif",
   body: "'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif",
 } as const;
+
+/**
+ * Paletas para daltonismo (fase 21). Cambian los colores con significado: zonas (y con ellas las barras de
+ * demanda), estados (bien, aviso, mal) y las rampas de las vistas de datos. Basadas en la paleta de Okabe e Ito.
+ * - redGreen: protanopía y deuteranopía (no distinguen rojo de verde): azul, bermellón y gris claro.
+ * - blueYellow: tritanopía (no distinguen azul de amarillo): verde azulado, rosa y pardo.
+ */
+export type ColorVision = 'normal' | 'redGreen' | 'blueYellow';
+
+type Shades = Record<'low' | 'medium' | 'high', string>;
+interface VisionPalette {
+  zones: Record<'R' | 'C' | 'I', Shades>;
+  positive: string;
+  warning: string;
+  negative: string;
+}
+
+const NORMAL_ZONES = structuredClone(ZONE_COLORS);
+export const VISION_PALETTES: Record<ColorVision, VisionPalette> = {
+  normal: { zones: NORMAL_ZONES, positive: '#7DC4A0', warning: '#E8B45A', negative: '#E5806F' },
+  // Azul, bermellón y gris claro: la terna de Okabe-Ito más separada con protanopía y deuteranopía
+  // (tests/colorvision.test.ts lo comprueba simulando la visión de cada deficiencia)
+  redGreen: {
+    zones: {
+      R: { low: '#4A9BD1', medium: '#0072B2', high: '#005A8C' },
+      C: { low: '#E68A4D', medium: '#D55E00', high: '#A84A00' },
+      I: { low: '#E6E1D8', medium: '#D8D2C8', high: '#B9B2A6' },
+    },
+    positive: '#56B4E9',
+    warning: '#F0E442',
+    negative: '#E07B2A',
+  },
+  blueYellow: {
+    zones: {
+      R: { low: '#8FD6C0', medium: '#3FB08F', high: '#1F8A6C' },
+      C: { low: '#F2A3B0', medium: '#E0707A', high: '#B84A56' },
+      I: { low: '#CBBBAA', medium: '#A88F7A', high: '#7F6A57' },
+    },
+    positive: '#3FB08F',
+    warning: '#E8D8D0',
+    negative: '#E0707A',
+  },
+};
+
+/** Aplica una paleta a los tokens (y los vuelve a publicar como variables CSS si hay página). */
+export function setColorVision(mode: ColorVision): void {
+  const p = VISION_PALETTES[mode];
+  const ui = UI as { -readonly [K in keyof typeof UI]: string };
+  const data = DATA as { -readonly [K in keyof typeof DATA]: string };
+  ui.positive = p.positive;
+  ui.warning = p.warning;
+  ui.negative = p.negative;
+  data.zoneR = p.zones.R.medium;
+  data.zoneC = p.zones.C.medium;
+  data.zoneI = p.zones.I.medium;
+  data.income = p.positive;
+  data.expense = p.negative;
+  data.unemployment = p.negative;
+  setZoneColors(p.zones);
+  if (typeof document !== 'undefined') applyTheme();
+}
 
 /** Escala de espaciado (px) y radios: esquinas casi rectas, aspecto de herramienta técnica. */
 export const SPACE = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32 } as const;

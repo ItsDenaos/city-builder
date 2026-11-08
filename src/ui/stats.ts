@@ -1,3 +1,4 @@
+import { currentLanguage, translate } from './i18n';
 import type { GameState, StatsSample } from '../sim/state';
 import { DATA, FONTS, UI } from '../theme';
 import { icon } from './icons';
@@ -46,9 +47,10 @@ const CHARTS: Chart[] = [
     zero: true,
     format: (v) => `${v > 0 ? '+' : ''}${Math.round(v)}`,
     series: [
-      { label: 'Residencial', color: DATA.zoneR, value: (s) => s.demand.R * 100 },
-      { label: 'Comercial', color: DATA.zoneC, value: (s) => s.demand.C * 100 },
-      { label: 'Industrial', color: DATA.zoneI, value: (s) => s.demand.I * 100 },
+      // Con getters: la paleta para daltonismo puede cambiar los colores de las zonas en marcha
+      { label: 'Residencial', get color() { return DATA.zoneR; }, value: (s) => s.demand.R * 100 },
+      { label: 'Comercial', get color() { return DATA.zoneC; }, value: (s) => s.demand.C * 100 },
+      { label: 'Industrial', get color() { return DATA.zoneI; }, value: (s) => s.demand.I * 100 },
     ],
   },
   { id: 'unemployment', label: 'Paro', zero: true, format: pct, series: [{ label: 'Paro', color: DATA.unemployment, value: (s) => s.unemployment * 100 }] },
@@ -198,7 +200,7 @@ export class StatsPanel {
     if (!this.open || performance.now() - this.lastRefresh < REFRESH_MS) return;
     this.lastRefresh = performance.now();
     const last = state.history.at(-1);
-    const key = `${state.history.length}:${last?.month}/${last?.year}:${this.chart.id}:${this.range.label}`;
+    const key = `${state.history.length}:${last?.month}/${last?.year}:${this.chart.id}:${this.range.label}:${currentLanguage()}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     this.draw(state.history.slice(-Math.min(this.range.months, state.history.length)));
@@ -217,7 +219,7 @@ export class StatsPanel {
     if (samples.length < 2) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('Las gráficas aparecen al cerrar el segundo mes.', w / 2, h / 2);
+      ctx.fillText(translate('Las gráficas aparecen al cerrar el segundo mes.'), w / 2, h / 2);
       return;
     }
 
@@ -287,6 +289,7 @@ export function createHelpPanel(onClose: () => void): HTMLElement {
     ['Construcción', [['Clic / arrastrar', 'Usar la herramienta'], ['Q', 'Inspeccionar'], ['R', 'Calle'], ['B', 'Demoler'], ['F', 'Franja de zonas junto a calles'], ['Ctrl+Z', 'Deshacer'], ['Ctrl+Y', 'Rehacer'], ['Esc', 'Soltar la herramienta']]],
     ['Tiempo', [['Espacio', 'Pausa'], ['1 2 3', 'Velocidad']]],
     ['Gestión', [['G', 'Ágora'], ['L', 'Progreso'], ['P', 'Presupuesto'], ['E', 'Estadísticas'], ['H', 'Controles'], ['Esc', 'Menú de pausa']]],
+    ['Ambiente', [['V', 'Seguir a un vecino'], ['M', 'Modo foto']]],
   ];
   const body = document.createElement('div');
   body.className = 'panel-body';

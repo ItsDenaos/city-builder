@@ -8,7 +8,8 @@ describe('tiempo', () => {
   it('avanza de mes cada 30 días y de año cada 12 meses', () => {
     const s = createGame({ width: 8, height: 8, flat: true });
     const events = [];
-    for (let i = 0; i < 30; i++) events.push(...tick(s));
+    // Solo los eventos del calendario (el clima también avisa de tormentas y nevadas)
+    for (let i = 0; i < 30; i++) events.push(...tick(s).filter((e) => e.type === 'newMonth' || e.type === 'newYear'));
     expect(s.time).toMatchObject({ day: 1, month: 2, year: 2000 });
     expect(events).toEqual([{ type: 'newMonth', month: 2, year: 2000 }]);
 

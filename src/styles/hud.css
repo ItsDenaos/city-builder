@@ -677,3 +677,58 @@ body.attract .side-panel,
 body.attract .toasts {
   display: none !important;
 }
+
+/* ---------- Ambiente (fase 20): hora y tiempo junto a la fecha ---------- */
+.tb-clock {
+  color: var(--ui-text-secondary);
+}
+
+.tb-weather {
+  display: inline-flex;
+  color: var(--ui-text-muted);
+}
+
+/* ---------- Seguir a un vecino ---------- */
+.follow-card {
+  display: flex;
+  flex-direction: column;
+  animation: rise-in 0.14s ease-out;
+}
+
+.follow-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+/* ---------- Modo foto: solo queda la barra de la foto (y las ventanas de aviso) ---------- */
+#ui.photo-mode > :not(.photo-bar):not(.modal-backdrop):not(.menu-backdrop) {
+  display: none !important;
+}
+
+.photo-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.photo-bar .btn[aria-pressed='true'] {
+  border-color: var(--ui-gold);
+  color: var(--ui-gold-strong);
+}
+
+@container ui (max-width: 640px) {
+  .photo-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    white-space: normal;
+    width: calc(100% - 24px);
+  }
+}

@@ -13,6 +13,7 @@ import { computeInfluence } from './systems/influence';
 import { computeTourism } from './systems/tourism';
 import { updateProgress } from './systems/progress';
 import { advanceTime } from './systems/time';
+import { updateWeather } from './systems/weather';
 import { computeTraffic } from './systems/traffic';
 import { computePower, computeWater } from './systems/utilities';
 import type { SimEvent } from './types';
@@ -21,6 +22,7 @@ import type { SimEvent } from './types';
 type System = (state: GameState, events: SimEvent[]) => void;
 
 const SYSTEMS: System[] = [
+  updateWeather, // el tiempo del día (con su propio generador)
   computeRoadAccess,
   computePower,
   computeWater, // después de la electricidad: las bombas la necesitan

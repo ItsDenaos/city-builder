@@ -1,12 +1,12 @@
 import { type Command, canDragPlace } from '../sim/commands';
 import { getBuildingDef } from '../sim/data/buildings';
-import { gridPositions, normalizeRect, rectPoints, roadPath } from '../sim/geometry';
+import { curvePath, gridPositions, normalizeRect, rectPoints, roadPath } from '../sim/geometry';
 import type { RoadKind } from '../sim/data/roads';
 import type { Density, Point, ZoneType } from '../sim/types';
 
 export type Tool =
   | { kind: 'select' }
-  | { kind: 'road'; road: RoadKind }
+  | { kind: 'road'; road: RoadKind; curve?: boolean }
   | { kind: 'powerLine' }
   | { kind: 'pipe' }
   | { kind: 'removePipe' }
@@ -15,6 +15,8 @@ export type Tool =
   | { kind: 'zone'; zone: ZoneType; density: Density }
   | { kind: 'dezone' }
   | { kind: 'bulldoze' }
+  /** Editor de terreno (fase 21). */
+  | { kind: 'terrain'; to: 'land' | 'water' }
   | { kind: 'building'; defId: string }
   /** Comprar parcelas de terreno. */
   | { kind: 'land' }
@@ -57,7 +59,7 @@ export function toolCommand(tool: Tool, start: Point, end: Point, opts: ToolOpti
     case 'select':
       return null;
     case 'road':
-      return { type: 'buildRoad', from: start, to: end, road: tool.road };
+      return { type: 'buildRoad', from: start, to: end, road: tool.road, ...(tool.curve ? { curve: true } : {}) };
     case 'powerLine':
       return { type: 'buildPowerLine', from: start, to: end };
     case 'pipe':
@@ -74,6 +76,8 @@ export function toolCommand(tool: Tool, start: Point, end: Point, opts: ToolOpti
       return { type: 'dezone', rect: normalizeRect(start, end) };
     case 'bulldoze':
       return { type: 'bulldoze', rect: normalizeRect(start, end) };
+    case 'terrain':
+      return { type: 'terraform', rect: normalizeRect(start, end), to: tool.to };
     case 'building': {
       // Los parques y los edificios de una casilla se colocan en serie arrastrando
       const def = getBuildingDef(tool.defId);
@@ -94,6 +98,7 @@ export function toolPreviewTiles(tool: Tool, start: Point | null, hover: Point):
     case 'select':
       return [];
     case 'road':
+      return tool.curve ? curvePath(from, hover) : roadPath(from, hover);
     case 'powerLine':
     case 'pipe':
     case 'metro':
@@ -103,6 +108,7 @@ export function toolPreviewTiles(tool: Tool, start: Point | null, hover: Point):
     case 'zone':
     case 'dezone':
     case 'bulldoze':
+    case 'terrain':
     case 'district':
       return rectPoints(normalizeRect(from, hover));
     case 'building': {

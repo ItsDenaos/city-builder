@@ -3,12 +3,12 @@ import { UNDO_MAX_DAYS, UNDO_MAX_ENTRIES } from './config';
 import { refreshDerived } from './simulation';
 import type { BuildingInstance, GameState } from './state';
 
-// Capas que cambian los comandos (el relieve no lo cambia ninguno)
-const LAYERS = ['road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro', 'garbage'] as const;
+// Capas que cambian los comandos (el terreno, con el editor de terreno de la fase 21)
+const LAYERS = ['terrain', 'road', 'zoneType', 'zoneDensity', 'lotLevel', 'lotOccupants', 'building', 'powerLine', 'waterPipe', 'fire', 'metro', 'garbage'] as const;
 
 /** Lo que cambia la ciudad; impuestos, préstamos y velocidad no se deshacen. */
 const UNDOABLE: ReadonlySet<Command['type']> = new Set([
-  'buildRoad', 'zone', 'dezone', 'placeBuilding', 'buildPowerLine', 'buildPipe', 'removePipe', 'buildMetro', 'removeMetro', 'bulldoze', 'buyPlot',
+  'buildRoad', 'zone', 'dezone', 'placeBuilding', 'buildPowerLine', 'buildPipe', 'removePipe', 'buildMetro', 'removeMetro', 'bulldoze', 'terraform', 'buyPlot',
 ]);
 
 interface Snapshot {

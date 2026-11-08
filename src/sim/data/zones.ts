@@ -41,8 +41,9 @@ const BUILDING_NAME: Record<ZoneType, Record<Density, string>> = {
   C: { low: 'Tienda', medium: 'Centro comercial', high: 'Torre de oficinas' },
   I: { low: 'Taller', medium: 'Fábrica', high: 'Complejo industrial' },
 };
-// Verde residencial, azul comercial y amarillo industrial, en tonos que conviven con la paleta de AKROPOLIS
-const COLORS: Record<ZoneType, Record<Density, string>> = {
+// Verde residencial, azul comercial y amarillo industrial, en tonos que conviven con la paleta de AKROPOLIS.
+// Con las paletas para daltonismo (fase 21) se cambian con setZoneColors.
+export const ZONE_COLORS: Record<ZoneType, Record<Density, string>> = {
   R: { low: '#93C99E', medium: '#79B887', high: '#5E9E6E' },
   C: { low: '#90B9DE', medium: '#6FA3D2', high: '#5486B8' },
   I: { low: '#E3C97E', medium: '#D6B65A', high: '#B99A3F' },
@@ -58,9 +59,14 @@ export const ZONES: readonly ZoneDef[] = (['R', 'C', 'I'] as const).flatMap((typ
     costPerTile: COST[density],
     unlockAtPopulation: UNLOCK[density],
     capacity: CAPACITY[type][density],
-    color: COLORS[type][density],
+    color: ZONE_COLORS[type][density],
   })),
 );
+
+/** Cambia los colores de las zonas (paletas para daltonismo): menús, mapa y vista alejada los leen de aquí. */
+export function setZoneColors(colors: Record<ZoneType, Record<Density, string>>): void {
+  for (const z of ZONES as ZoneDef[]) z.color = colors[z.type][z.density];
+}
 
 export function getZoneDef(type: ZoneType, density: Density): ZoneDef {
   return ZONES.find((z) => z.type === type && z.density === density)!;

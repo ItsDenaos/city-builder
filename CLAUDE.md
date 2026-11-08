@@ -4,7 +4,7 @@ City builder para navegador al estilo SimCity / Cities: Skylines, con simulació
 
 ## Cómo trabaja el usuario (respetar siempre)
 
-- **Idioma**: conversación, interfaz, comentarios del código y mensajes de los tests, en español. El inglés solo aparece en la marca ("BUILD BEYOND.").
+- **Idioma**: conversación, interfaz, comentarios del código y mensajes de los tests, en español. El inglés solo aparece en la marca ("BUILD BEYOND.") y en el diccionario de la traducción opcional (`src/ui/i18n.ts`).
 - **Nunca hacer commit sin que lo pida.** Al terminar un bloque, ofrecerlo como opción; el usuario prefiere probar el juego antes de fijar cambios. Durante todo el proyecto ha respondido "sin commit todavía".
 - **Por fases**: se trabaja fase a fase según el roadmap del README. Al acabar cada una: tests, tipos y build en verde, prueba en el navegador, README al día, y preguntar si se sigue con la siguiente.
 - **Lógica antes que arte**, pero el arte tiene identidad propia: el usuario rechazó un primer arte por "genérico".
@@ -15,7 +15,7 @@ City builder para navegador al estilo SimCity / Cities: Skylines, con simulació
 ```bash
 npm install
 npm run dev        # http://localhost:5173 (?seed=123 cambia el mapa de la demostración)
-npm test           # 247 tests en ~3 min, incluidos los objetivos de balance
+npm test           # 287 tests en ~3 min, incluidos los objetivos de balance
 npm run typecheck  # tsc --noEmit
 npm run build      # tipos + build de producción en dist/
 npm run balance    # informe largo con el jugador automático (balance/, hasta 10 min)
@@ -34,12 +34,14 @@ src/sim/       lógica pura, sin DOM: todo se prueba con Vitest
                  influencia, tráfico, progreso, incidentes, Ágora...)
   data/          catálogos (zonas, edificios, vías, rangos, logros, escenarios, eventos, Ágora):
                  los menús de la UI se generan a partir de aquí
-  save.ts        serialización con SAVE_VERSION y migraciones
+  save.ts        serialización con SAVE_VERSION y migraciones (capas comprimidas con PackBits)
+  host.ts        SimHost: tick, comandos y deshacer de la partida; corre en el worker (worker.ts)
   undo.ts        deshacer/rehacer por diferencias de casillas
   autoplayer.ts  jugador automático: tests de balance y ciudad de demostración del menú
+src/simClient.ts  la pestaña habla con el worker: predicción de comandos y estado de verdad
 src/render/    cámara y canvas; solo lee el estado (art/ = dibujo procedural)
 src/input/     ratón, teclado y herramientas → comandos
-src/ui/        HUD, menús, paneles, ventanas, marca, iconos
+src/ui/        HUD, menús, paneles, ventanas, marca, iconos; i18n.ts: traducción al inglés
 src/styles/    CSS; los valores llegan como variables desde src/theme.ts
 tests/         un archivo por área; balance.test.ts fija los objetivos de crecimiento y economía
 ```
@@ -52,6 +54,7 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 - **Al añadir una capa persistente o un campo al estado**: subir `SAVE_VERSION`, migrar en `deserialize` (las capas que falten se quedan a cero; los objetos nuevos se completan con su `new...()`), añadirla a `LAYERS` en undo.ts si la tocan los comandos, y probar el guardado.
 - **Los valores por defecto de `createGame` no tienen sorpresas**: `incidents: 0`, `elections: false`, `sanitation: false`, `demographics: false`, sin parcelas ni guía. Así los tests y el balance no cambian al añadir sistemas. El menú (y los escenarios) eligen otros valores para el jugador; las partidas antiguas se cargan con basura y salud, y educación y edades, activadas.
 - **Números de balance** en `src/sim/config.ts` y en los catálogos de `data/`. Si un cambio rompe `tests/balance.test.ts`, mirar el informe con `npm run balance` antes de tocar los umbrales.
+- **Textos nuevos de la interfaz**: se escriben en español y se añade su traducción a `EN` en `src/ui/i18n.ts` (con `{}` para los huecos y `{#}` para los números). `tests/i18n.test.ts` comprueba que los catálogos de `data/` están traducidos.
 - **El jugador automático** elige siempre la opción por defecto de los eventos (la última, que es gratis) y no atiende peticiones: sirve para comprobar que el juego sigue siendo jugable aunque uno no reaccione.
 
 ## Identidad visual (resumen; detalle en el README)
@@ -78,21 +81,20 @@ tests/         un archivo por área; balance.test.ts fija los objetivos de creci
 
 - Los eventos de puntero sintéticos fallan en `setPointerCapture`. Para simular arrastres desde JS, primero `canvas.setPointerCapture = () => {}`.
 - Editar `main.ts`, el renderer y otros módulos raíz provoca una recarga completa con Vite, que devuelve al menú principal. Hay que volver a crear la partida de prueba.
-- `window.game` expone `{ state, camera, demo }` para depurar.
+- `window.game` expone `{ state, camera, demo }` para depurar. Con el worker, `state` se sustituye con cada lote de días: hay que volver a leer `window.game.state`, no guardar la referencia.
+- Editar `i18n.ts`, `save.ts` o el dibujo también recarga la página entera.
 - Si el panel del navegador está oculto, `requestAnimationFrame` se pausa. Para leer el estado es más fiable el DOM o JS que las capturas, que a veces salen recortadas o desfasadas.
 - Después de probar, dejar `localStorage` sin ajustes de prueba.
 
-## Estado del proyecto (20/10/2026)
+## Estado del proyecto (08/11/2026)
 
 **Hecho**:
 - fases 0 a 10 (simulación, redes, economía, influencia, tráfico, menús, balance y arte);
 - la identidad AKROPOLIS;
-- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos), 16 (transporte público), 14 (basura y salud), 15 (educación y edades) y 19 (monumentos y turismo), detalladas en el README.
+- en este orden: fase 12 (progresión), 11 (comodidad), 17 (eventos), 18 (Ágora), 13 (financiación por departamento, ordenanzas y distritos), 16 (transporte público), 14 (basura y salud), 15 (educación y edades), 19 (monumentos y turismo), 20 (ambiente, seguir a un vecino y modo foto) y 21 (Web Worker, mapas de 256, guardado comprimido, editor de terreno, inglés y daltonismo), detalladas en el README;
+- el resto de la fase 2: carreteras curvas.
 
-**Pendiente, en el orden recomendado**:
-1. **Fase 20**: ambiente (día y noche, clima, sonido), seguir a un ciudadano y modo foto.
-2. **Fase 21**: simulación en Web Worker, mapas de 256, editor de terreno, inglés y paletas para daltonismo.
-3. **Resto de la fase 2**: carreteras curvas.
+**Pendiente**: el roadmap del README está completo; lo siguiente lo decide el usuario.
 
 Cada fase nueva debe:
 - llevar tests propios;
@@ -112,7 +114,12 @@ Cada fase nueva debe:
 - **Basura y salud** (`systems/garbage.ts`, `systems/health.ts`): `collectGarbage` va en `SYSTEMS` (no en `refreshDerived`: cambia la capa persistente `garbage` y la carga de los vertederos); la salud la calcula `computeInfluence` antes de la felicidad. Todo se apaga sin `state.sanitation`. Una instalación nueva: entrada en `buildings.ts` con `garbage: { collect, radius, storage? }`; camas nuevas: `beds`.
 - **Educación y edades** (`systems/demography.ts`): la población es un reparto de fracciones (`state.demography`: niños, mayores y adultos por estudios) que `updateDemography` actualiza al cerrar el mes; `computeEducation` (desde `computeStats`) cuenta plazas y empleo cualificado cada día. Para no cambiar nada sin la fase, todo pasa por `workforceRatio`, `incomeIndex`, `qualifiedSurplus` y `schoolShortagePenalty`, que devuelven lo de antes si `demographics` es false. Plazas nuevas: `seats` en `buildings.ts`.
 - **Monumento nuevo**: entrada en `buildings.ts` con `category: 'monuments'` y `monument: { attraction }` (son únicos: lo comprueba `commands.ts`), y volúmenes propios en `art/buildings.ts`. El turismo (`systems/tourism.ts`) va en `SYSTEMS` después de la influencia; los turistas en coche se suman al tráfico del día siguiente. Sin monumentos no hay turismo, así que no hace falta opción de partida; el bot solo los construye con `monuments: true`.
+- **Ambiente** (fase 20): el clima es de la simulación (`state.weather`, `systems/weather.ts`, con su propio generador: no cambia nada más que el riesgo de incendio); la hora del día es solo del dibujo (reloj `dayClock` en `main.ts`, una vuelta cada `DAY_CYCLE_MS`). El dibujo nocturno va en `render/ambient.ts`: los dibujos de la ciudad apuntan sus luces en `f.lights` / `f.headlights` y el ambiente las pinta después, sobre la oscuridad. El sonido (`ui/audio.ts`) es Web Audio generado; no hay archivos de audio. Seguir a un vecino (`ui/follow.ts`) y el modo foto (`ui/photo.ts`) solo leen el estado.
 - **Ajuste del jugador**: añadir una entrada en `SETTING_FIELDS` (ui/settings.ts) y aplicarla en `main.ts`.
+- **Simulación en el worker** (fase 21): `SimHost` (sim/host.ts) tiene la partida de verdad y su `UndoHistory`; `SimClient` (simClient.ts) aplica cada comando también en la copia de la pestaña para que se vea al momento, lo manda con un número de orden y, cuando llega el estado del worker, vuelve a aplicar los que aún no ha confirmado. `main.ts` pide días con `sim.tick` (como mucho `MAX_DAYS_PER_REQUEST`, uno cada vez). Lo que no pase por comandos no llega al worker: por eso la guía tiene su comando `setTutorial`. Si el worker falla, la partida sigue en la pestaña (`sim = null`).
+- **Traducción** (fase 21): `src/ui/i18n.ts` vigila la página con un MutationObserver y traduce textos y atributos (`aria-label`, `data-tip`, `title`, `placeholder`) con el diccionario `EN`; al volver al español restaura los originales. Lo que se dibuja en el canvas o sale en `prompt` se envuelve en `translate()`. Los nombres propios (barrios, vecinos, comercios) no se traducen.
+- **Paletas para daltonismo** (fase 21): `VISION_PALETTES` en `theme.ts`; `setColorVision` cambia `UI`, `DATA` y los colores de las zonas (`setZoneColors`), y el renderer reconstruye sus rampas (`rebuildRamps`). Los colores que se guardan en otros sitios deben leerse con un getter para seguir el cambio.
+- **Carreteras curvas y terreno** (fase 21): `curvePath` (geometry.ts) da el camino de 4 vecinos de una Bézier con el control en la esquina de la «L»; `buildRoad` con `curve: true`. En `art/ground.ts` los giros se dibujan como un cuarto de disco y los escalones (giros seguidos en sentido contrario), como media casilla en diagonal. El comando `terraform` excava o rellena (`TERRAFORM_*_COST` en config.ts) y no toca calles ni edificios.
 
 ## Continuar en otro PC
 

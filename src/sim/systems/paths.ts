@@ -64,6 +64,35 @@ export function treeRoots(tree: PathTree): Int32Array {
   return root;
 }
 
+/**
+ * Ruta más corta (en casillas) por las calles desde `start` hasta la primera calle que cumpla `isGoal`
+ * (búsqueda en anchura, determinista). Devuelve las casillas de calle en orden, o null si no se llega.
+ * La usa el modo «seguir a un vecino» (fase 20) para dibujar su trayecto.
+ */
+export function roadRoute(map: GameMap, start: number, isGoal: (i: number) => boolean): number[] | null {
+  const size = map.width * map.height;
+  if (start < 0 || start >= size || !map.road[start]) return null;
+  const prev = new Int32Array(size).fill(-2);
+  prev[start] = -1;
+  const queue = [start];
+  const w = map.width;
+  for (let head = 0; head < queue.length; head++) {
+    const i = queue[head];
+    if (isGoal(i)) {
+      const path: number[] = [];
+      for (let k = i; k !== -1; k = prev[k]) path.push(k);
+      return path.reverse();
+    }
+    const x = i % w;
+    for (const n of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+      if (n < 0 || n >= size || !map.road[n] || prev[n] !== -2) continue;
+      prev[n] = i;
+      queue.push(n);
+    }
+  }
+  return null;
+}
+
 /** Lleva el flujo de cada origen por el árbol hasta su fuente y lo suma en `out` casilla a casilla. */
 export function accumulate(tree: PathTree, origins: Float32Array, out: Float32Array): void {
   const flow = origins.slice();

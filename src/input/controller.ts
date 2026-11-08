@@ -22,6 +22,9 @@ export interface InputActions {
   toggleHelp(): void;
   toggleProgress(): void;
   toggleAgora(): void;
+  /** V: seguir a un vecino; M: modo foto (fase 20). */
+  toggleFollow(): void;
+  togglePhoto(): void;
   /** true mientras hay un menú abierto: solo Esc llega al juego. */
   blocked(): boolean;
   /** Ajuste: mover la cámara al llevar el ratón al borde de la ventana. */
@@ -170,6 +173,10 @@ export class InputController {
       this.actions.toggleProgress();
     } else if (key === 'g') {
       this.actions.toggleAgora();
+    } else if (key === 'v') {
+      this.actions.toggleFollow();
+    } else if (key === 'm') {
+      this.actions.togglePhoto();
     } else if (key === 'q') {
       this.actions.setTool(SELECT_TOOL);
     } else if (key === 'r') {

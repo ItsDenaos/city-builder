@@ -1,3 +1,4 @@
+import { translate } from './i18n';
 import type { Command } from '../sim/commands';
 import {
   FUNDING_MAX,
@@ -36,7 +37,7 @@ const EXPENSE_LABELS: Record<keyof Budget['expenses'], string> = {
   ordinances: 'Ordenanzas',
   loans: 'Préstamos',
 };
-const ZONE_DOT = { R: DATA.zoneR, C: DATA.zoneC, I: DATA.zoneI };
+const ZONE_DOT = { get R() { return DATA.zoneR; }, get C() { return DATA.zoneC; }, get I() { return DATA.zoneI; } };
 const HISTORY_SHOWN = 24;
 const REFRESH_MS = 250;
 
@@ -84,7 +85,7 @@ export class BudgetPanel {
       if (b?.dataset.rename) {
         const id = Number(b.dataset.rename);
         const current = this.lastState?.districts.find((d) => d.id === id);
-        const name = current ? window.prompt('Nuevo nombre del distrito', current.name) : null;
+        const name = current ? window.prompt(translate('Nuevo nombre del distrito'), current.name) : null;
         if (name !== null) this.run({ type: 'renameDistrict', id, name });
         this.lastRefresh = 0;
         return;
@@ -243,7 +244,7 @@ export class BudgetPanel {
       ctx.fillStyle = UI.textMuted;
       ctx.font = `22px ${FONTS.body}`;
       ctx.textAlign = 'center';
-      ctx.fillText('El historial aparece tras el segundo mes.', w / 2, h / 2);
+      ctx.fillText(translate('El historial aparece tras el segundo mes.'), w / 2, h / 2);
       return;
     }
     const min = Math.min(0, ...points);

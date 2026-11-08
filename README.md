@@ -44,9 +44,11 @@ Las partidas se guardan en el navegador de cada jugador (`localStorage`), así q
 | Inspeccionar / calle / demoler | Q / R / B |
 | Franja de zonas junto a calles (todo, 1, 2, 3) | F |
 | Deshacer / rehacer | Ctrl+Z / Ctrl+Y (o Ctrl+Mayús+Z) |
-| Atrás, soltar herramienta, menú de pausa | Esc |
+| Seguir a un vecino (el de la vivienda seleccionada o uno al azar) | V |
+| Modo foto (hora, desenfoque de maqueta y guardar PNG) | M |
+| Atrás, salir del modo foto o de seguir, soltar herramienta, menú de pausa | Esc |
 
-Los parques y los edificios de una casilla se colocan en serie arrastrando. En Ajustes (menú principal o de pausa) se eligen el autoguardado, mover la cámara con los bordes de la pantalla, el tamaño de la interfaz, reducir animaciones y los consejos del asesor.
+Los parques y los edificios de una casilla se colocan en serie arrastrando. Cada vía tiene versión curva (Carreteras → «Calle curva» o «Avenida curva»: arrastra de un extremo a otro), y la categoría Terreno excava agua o rellena tierra. En Ajustes (menú principal o de pausa) se eligen el idioma (español o inglés), el autoguardado, mover la cámara con los bordes de la pantalla, el tamaño de la interfaz, reducir animaciones, los consejos del asesor, el volumen del sonido, el ciclo de día y noche y los colores para daltonismo.
 
 ## Identidad AKROPOLIS
 
@@ -60,7 +62,7 @@ Los parques y los edificios de una casilla se colocan en serie arrastrando. En A
 
 - **Colores de marca:** Midnight Slate `#172B3A`, Aegean Gold `#D2AE70`, Marble `#EAE6DC` y Olive Grove `#577A70`.
 - **Uso del oro:** solo donde tiene significado. Marca la selección (una línea de 2 px), los ejes de las avenidas, los emblemas de los servicios públicos, el remate de las torres más altas y los desbloqueos.
-- **Colores de datos:** conservan su significado habitual (verde residencial, azul comercial, amarillo industrial, rojo para lo negativo) en tonos que conviven con la marca.
+- **Colores de datos:** conservan su significado habitual (verde residencial, azul comercial, amarillo industrial, rojo para lo negativo) en tonos que conviven con la marca. Hay dos paletas para daltonismo (rojo-verde y azul-amarillo, en `VISION_PALETTES` de `src/theme.ts`) que cambian zonas, estados y vistas de datos; `tests/colorvision.test.ts` comprueba con una simulación de daltonismo que se distinguen.
 - **Tipografía:** Sora para el logotipo y los títulos, e IBM Plex Sans para la interfaz y las cifras (tabulares). Se cargan de Google Fonts y, si no cargan, se usa la fuente del sistema. Los SVG exportados del logotipo usan Sora solo si está instalada.
 - **Disposición del HUD:**
   - arriba, el estado de la ciudad;
@@ -69,7 +71,7 @@ Los parques y los edificios de una casilla se colocan en serie arrastrando. En A
   - a la derecha, el carril de gestión.
 
   En el menú principal, una ciudad de demostración crece en directo detrás del logotipo.
-- **Idioma:** la interfaz está en español. El inglés se reserva para la marca (el lema BUILD BEYOND.).
+- **Idioma:** la interfaz está en español. El inglés se reserva para la marca (el lema BUILD BEYOND.) y para la traducción opcional (Ajustes → Idioma), que es una capa aparte (`src/ui/i18n.ts`): el código del juego sigue escrito en español.
 
 ## Arquitectura
 
@@ -89,10 +91,13 @@ src/
     autoplayer.ts jugador automático (balance y ciudad de demostración)
     systems/      un archivo por sistema (demanda, crecimiento, redes, economía, influencia, tráfico, transporte, basura, salud, demografía, turismo, distritos...)
     data/         catálogos de zonas, edificios, vías, departamentos y ordenanzas: los menús se generan a partir de aquí
-  render/       cámara y canvas (solo lee el estado)
+    host.ts       anfitrión de la simulación (tick, comandos, deshacer) que corre en el worker
+    worker.ts     Web Worker de la simulación
+  simClient.ts  la pestaña: habla con el worker y predice los comandos mientras llega el estado
+  render/       cámara y canvas (solo lee el estado); ambient.ts: día y noche y tiempo
     art/          suelo, calles, edificios, coches, paleta y la imagen por casilla para el zoom alejado
   input/        ratón, teclado y herramientas -> comandos
-  ui/           HUD, menús, paneles, marca, iconos y descripciones emergentes
+  ui/           HUD, menús, paneles, marca, iconos y descripciones emergentes; i18n.ts: traducción al inglés
   styles/       hojas de estilo
 public/brand/   logotipo y favicon en SVG
 balance/        informes de balance (npm run balance)
@@ -103,7 +108,7 @@ balance/        informes de balance (npm run balance)
 - [x] **Fase 0**: setup (Vite + TS + Vitest), bucle de juego con paso fijo
 - [x] **Fase 1**: mapa generado por semilla, cámara (pan/zoom), hover, selección
 - [x] Base de la fase 2: comandos de carretera, zonas, edificios y demoler, con costes y previsualización
-- [x] **Fase 2**: herramientas de construcción (deshacer y rehacer, franjas y colocación en serie llegaron en la fase 11; quedan las curvas)
+- [x] **Fase 2**: herramientas de construcción (deshacer y rehacer, franjas y colocación en serie llegaron en la fase 11, y las carreteras curvas al final: cada vía tiene versión curva que traza un arco entre sus extremos; los giros se dibujan redondeados y los tramos en escalera, como una diagonal)
 - [x] **Fase 3**: demanda RCI, acceso vial (3 casillas, conectado al borde), crecimiento y niveles, empleo, desbloqueos y consejos
 - [x] **Fase 4**: electricidad (conducen carreteras, zonas, edificios y tendido) y agua (tuberías con radio 2), reparto por cercanía, vistas de red
 - [x] **Fase 5**: economía: impuestos por zona (afectan a la demanda), mantenimiento, cierre mensual, préstamos y bancarrota
@@ -122,4 +127,5 @@ balance/        informes de balance (npm run balance)
 - [x] **Fase 14**: basura y salud (en las partidas del menú y los escenarios). Cada lote produce basura según sus ocupantes; el vertedero (que se llena), el centro de reciclaje y la incineradora la recogen hasta su capacidad diaria, de los lotes más cercanos a los más lejanos de su radio. Donde no se recoge se acumula y, pasado un mínimo, quita felicidad, valor del suelo y salud. Cada vivienda tiene un índice de salud (sanidad, contaminación y basura): con salud baja hay enfermos, que no trabajan y ocupan camas de clínicas y hospitales; sin cama, más descontento. Departamento de Residuos en la financiación, ordenanza «Recogida selectiva», vistas «Basura» y «Salud de los vecinos», gráfica de salud, quejas y peticiones en el Ágora, avisos del asesor, logro «Ciudad limpia» (20 logros) y el jugador automático gestiona la basura (hay un objetivo de balance con el sistema activo)
 - [x] **Fase 15**: educación y edades (en las partidas del menú y los escenarios). La población se reparte en niños, adultos y mayores: cada mes nacen niños, los niños se hacen adultos, los adultos se jubilan y los mayores mueren (menos con buena sanidad); los recién llegados traen su propia mezcla y una ciudad que no crece envejece. Solo trabajan los adultos. Los adultos tienen estudios básicos, superiores o ninguno: las plazas escolares (escuela para los básicos; instituto y la nueva universidad para los superiores) educan a los niños que se hacen adultos y atraen a familias con estudios. Los sueldos, y con ellos el impuesto residencial, dependen de los estudios (los mayores pagan menos); el comercio y la industria necesitan trabajadores con estudios para subir a los niveles 2 y 3, y la falta de plazas escolares disgusta a las familias. Plazas en el inspector, desglose de la población en la barra superior, gráficas de edades y de estudios, quejas, petición y elogio en el Ágora, avisos del asesor y logro «Ciudad universitaria» (21 logros); el jugador automático construye escuelas, institutos y universidad (objetivo de balance de una partida completa)
 - [x] **Fase 19**: monumentos y turismo. Cinco monumentos únicos que se desbloquean con la población (jardín botánico, museo de la ciudad, teatro, estadio y torre mirador): suben el valor del suelo a su alrededor y dan orgullo de ciudad (felicidad en todas las viviendas). Los visitantes diarios dependen de su atractivo y de lo feliz y segura que es la ciudad; gastan dinero (ingreso de turismo, que sigue al impuesto comercial), piden comercio y llegan en coche desde el borde del mapa (cargan las calles hasta los monumentos) o en tren, si hay estación (y entonces vienen más). Sección de monumentos en el panel de progreso, visitantes en el inspector, gráfica de turismo, Ágora, avisos del asesor y los logros «Destino turístico» y «Patrimonio» (23 logros). Los monumentos solo salen rentables en una ciudad feliz y segura
-- [ ] **Fases 20-21**: ambiente (día y noche, clima, sonido), rendimiento y accesibilidad
+- [x] **Fase 20**: ambiente. Ciclo de día y noche (un día dura unos 4 minutos de juego y se para en pausa): de noche la maqueta se oscurece en azul, las ventanas se encienden poco a poco, hay farolas en las calles y los coches llevan faros; al amanecer y al atardecer, luz cálida. Clima por estaciones (despejado, nubes, lluvia, tormenta con relámpagos, niebla y nieve en invierno), con su propio generador para no alterar la simulación; la lluvia y la nieve frenan los incendios y los rayos de las tormentas los provocan. Sonido generado por el juego, sin archivos: murmullo de la ciudad según el tráfico y el zoom, lluvia, viento, truenos, pájaros de día y grillos de noche, y avisos al construir, demoler, equivocarse o lograr algo. Seguir a un vecino (V): la cámara le acompaña de casa al trabajo, al colegio o al parque según su edad y la hora, con su ficha. Modo foto (M): sin interfaz, con la hora a elegir, desenfoque de maqueta y botón para guardar la imagen en PNG. Ajustes de volumen y de día y noche
+- [x] **Fase 21**: rendimiento y accesibilidad. La simulación corre en un Web Worker: la pestaña solo dibuja, cada comando se aplica al momento en una copia local (predicción) y el worker devuelve el estado de verdad, con las capas del mapa en buffers transferibles; si el navegador no puede, sigue en la pestaña. Mapas «Enorme» de 256 × 256: una ciudad de 30.000 habitantes va a 60 fps a velocidad 3. Las partidas se guardan comprimidas (PackBits: unas 10 veces menos, y el autoguardado ya no da tirones; las antiguas se siguen cargando). Editor de terreno: excavar agua y rellenar tierra, con coste y deshacer. Traducción completa al inglés: un diccionario con plantillas traduce la interfaz sin tocar el código, con números y fechas en formato inglés. Colores para daltonismo rojo-verde y azul-amarillo

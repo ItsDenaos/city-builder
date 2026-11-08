@@ -112,11 +112,132 @@ export function drawGround(f: Frame): void {
   }
 }
 
+/** Esquina hacia la que gira una calle con exactamente dos vecinos en ángulo (dx, dy: -1 izquierda/arriba, 1 derecha/abajo). */
+function turnCorner(l: boolean, r: boolean, u: boolean, d: boolean): { dx: number; dy: number } | null {
+  if ((l ? 1 : 0) + (r ? 1 : 0) + (u ? 1 : 0) + (d ? 1 : 0) !== 2 || (l && r) || (u && d)) return null;
+  return { dx: r ? 1 : -1, dy: d ? 1 : -1 };
+}
+
+/**
+ * Giro en curva (fase 2): el asfalto es un cuarto de disco con centro en la esquina hacia la que se gira, con la
+ * acera por fuera y la línea central (o el eje de oro de las avenidas) siguiendo la curva.
+ */
+function drawTurn(f: Frame, sx: number, sy: number, sw: number, sh: number, c: { dx: number; dy: number }, avenue: boolean): void {
+  const { ctx, s } = f;
+  const cx = c.dx > 0 ? sx + sw : sx;
+  const cy = c.dy > 0 ? sy + sh : sy;
+  // Ángulos del cuarto de círculo que va del borde de un vecino al del otro
+  const a0 = c.dx > 0 ? (c.dy > 0 ? Math.PI : Math.PI / 2) : c.dy > 0 ? (3 * Math.PI) / 2 : 0;
+  const a1 = a0 + Math.PI / 2;
+  const R = Math.min(sw, sh);
+  const quarter = (radius: number) => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, a0, a1);
+    ctx.closePath();
+  };
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(sx, sy, sw, sh);
+  ctx.clip();
+  ctx.fillStyle = avenue ? WORLD.avenue : WORLD.street;
+  quarter(R);
+  ctx.fill();
+  // Acera exterior y la esquinita interior, donde se juntan las aceras de los dos tramos rectos
+  const t = Math.max(1, Math.round(s * 0.12));
+  ctx.strokeStyle = WORLD.sidewalk;
+  ctx.lineWidth = t;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R - t / 2, a0, a1);
+  ctx.stroke();
+  ctx.fillStyle = WORLD.sidewalk;
+  ctx.fillRect(c.dx > 0 ? sx + sw - t : sx, c.dy > 0 ? sy + sh - t : sy, t, t);
+  // Línea central siguiendo la curva
+  const lw = Math.max(1, Math.round(s * 0.045));
+  ctx.lineWidth = lw;
+  if (avenue) {
+    ctx.strokeStyle = WORLD.avenueLine;
+    for (const off of [-lw, lw]) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R / 2 + off, a0, a1);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = WORLD.lane;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R / 2, a0 + Math.PI / 8, a1 - Math.PI / 8);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * Tramo en escalera de una curva (dos giros seguidos en sentido contrario): el asfalto es la mitad de la casilla
+ * del lado de la esquina, así los escalones forman una diagonal recta en lugar de una serpiente de giros.
+ */
+function drawDiagonal(f: Frame, sx: number, sy: number, sw: number, sh: number, c: { dx: number; dy: number }, avenue: boolean): void {
+  const { ctx, s } = f;
+  const cx = c.dx > 0 ? sx + sw : sx;
+  const cy = c.dy > 0 ? sy + sh : sy;
+  // Los otros extremos de los dos bordes que dan a los vecinos: el del lado (vertical) y el de arriba o abajo
+  const ax = cx;
+  const ay = c.dy > 0 ? sy : sy + sh;
+  const bx = c.dx > 0 ? sx : sx + sw;
+  const by = cy;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.closePath();
+  ctx.fillStyle = avenue ? WORLD.avenue : WORLD.street;
+  ctx.fill();
+  ctx.clip();
+  // Acera por el lado largo
+  const t = Math.max(1, Math.round(s * 0.12));
+  ctx.strokeStyle = WORLD.sidewalk;
+  ctx.lineWidth = t * 2;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+  // Línea central, de la mitad de un borde a la mitad del otro
+  const m1x = (cx + ax) / 2;
+  const m1y = (cy + ay) / 2;
+  const m2x = (cx + bx) / 2;
+  const m2y = (cy + by) / 2;
+  const lw = Math.max(1, Math.round(s * 0.045));
+  ctx.lineWidth = lw;
+  if (avenue) {
+    const len = Math.hypot(m2x - m1x, m2y - m1y);
+    const nx = -(m2y - m1y) / len;
+    const ny = (m2x - m1x) / len;
+    ctx.strokeStyle = WORLD.avenueLine;
+    for (const off of [-lw, lw]) {
+      ctx.beginPath();
+      ctx.moveTo(m1x + nx * off, m1y + ny * off);
+      ctx.lineTo(m2x + nx * off, m2y + ny * off);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = WORLD.lane;
+    ctx.beginPath();
+    ctx.moveTo(m1x + (m2x - m1x) * 0.25, m1y + (m2y - m1y) * 0.25);
+    ctx.lineTo(m1x + (m2x - m1x) * 0.75, m1y + (m2y - m1y) * 0.75);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /** Calles y avenidas: asfalto grafito, aceras, línea mármol y eje de oro en las avenidas; puentes con barandilla. */
 export function drawRoads(f: Frame): void {
   const { ctx, state, vis, px, py, s, detail } = f;
   const { map } = state;
   const road = (x: number, y: number) => x >= 0 && y >= 0 && x < map.width && y < map.height && map.road[y * map.width + x] !== 0;
+  const cornerAt = (x: number, y: number) => (road(x, y) ? turnCorner(road(x - 1, y), road(x + 1, y), road(x, y - 1), road(x, y + 1)) : null);
+  /** Un giro es escalón si el vecino al que lleva gira hacia la esquina contraria. */
+  const step = (x: number, y: number, c: { dx: number; dy: number }) =>
+    [cornerAt(x + c.dx, y), cornerAt(x, y + c.dy)].some((n) => n !== null && n.dx === -c.dx && n.dy === -c.dy);
 
   for (let y = vis.y0; y <= vis.y1; y++) {
     const sy = py(y);
@@ -130,6 +251,13 @@ export function drawRoads(f: Frame): void {
       const bridge = map.terrain[i] === TERRAIN_WATER;
       const [l, r, u, d] = [road(x - 1, y), road(x + 1, y), road(x, y - 1), road(x, y + 1)];
 
+      // Giro (dos vecinos en ángulo y ninguno más): se dibuja en curva, como un cuarto de anillo
+      const turn = detail && !bridge && s >= 8 ? turnCorner(l, r, u, d) : null;
+      if (turn) {
+        if (step(x, y, turn)) drawDiagonal(f, sx, sy, sw, sh, turn, avenue);
+        else drawTurn(f, sx, sy, sw, sh, turn, avenue);
+        continue;
+      }
       ctx.fillStyle = bridge ? WORLD.bridge : avenue ? WORLD.avenue : WORLD.street;
       ctx.fillRect(sx, sy, sw, sh);
       if (!detail) continue;

@@ -6,7 +6,7 @@ import { createGame } from '../src/sim/state';
 import { TUTORIAL, advanceTutorial } from '../src/sim/tutorial';
 import { SETTING_FIELDS, parseSettings } from '../src/ui/settings';
 
-const base = { autosaveMonths: 3, edgeScroll: 0, uiScale: 1, reducedMotion: 0, advisor: 1 };
+const base = { autosaveMonths: 3, edgeScroll: 0, uiScale: 1, reducedMotion: 0, advisor: 1, volume: 0.5, dayNight: 1, colorVision: 0, language: 0 };
 
 /** Avanza la guía todo lo que permita el estado actual; devuelve los pasos cumplidos. */
 function advanceAll(s: ReturnType<typeof createGame>): string[] {

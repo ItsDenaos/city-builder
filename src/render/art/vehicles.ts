@@ -27,6 +27,9 @@ export function drawCars(f: Frame): void {
       const speed = 0.5 * (1 - Math.min(0.85, load * 0.7));
       const horizontalRoad = road(x - 1, y) || road(x + 1, y);
       const verticalRoad = road(x, y - 1) || road(x, y + 1);
+      // En los giros (dibujados en curva) no se pintan coches: irían en línea recta por fuera del asfalto
+      const links = [road(x - 1, y), road(x + 1, y), road(x, y - 1), road(x, y + 1)].filter(Boolean).length;
+      if (links === 2 && horizontalRoad && verticalRoad) continue;
       const sx = px(x);
       const sy = py(y);
       for (let k = 0; k < cars; k++) {
@@ -37,12 +40,18 @@ export function drawCars(f: Frame): void {
         let p = (time * speed + r) % 1;
         if (!forward) p = 1 - p;
         ctx.fillStyle = pick(CAR_COLORS, hash2(x, y, 40 + k));
+        // De noche (fase 20) cada coche lleva los faros delante, en el sentido de la marcha
+        const lamp = Math.max(1, wid * 0.5);
         if (horizontal) {
           const cy = sy + s * (forward ? 0.6 : 0.4);
-          ctx.fillRect(sx + p * s - len / 2, cy - wid / 2, len, wid);
+          const cx = sx + p * s;
+          ctx.fillRect(cx - len / 2, cy - wid / 2, len, wid);
+          if (f.night > 0.3) f.headlights.push(forward ? cx + len / 2 : cx - len / 2 - lamp, cy - lamp / 2, lamp, lamp);
         } else {
           const cx = sx + s * (forward ? 0.4 : 0.6);
-          ctx.fillRect(cx - wid / 2, sy + p * s - len / 2, wid, len);
+          const cy = sy + p * s;
+          ctx.fillRect(cx - wid / 2, cy - len / 2, wid, len);
+          if (f.night > 0.3) f.headlights.push(cx - lamp / 2, forward ? cy + len / 2 : cy - len / 2 - lamp, lamp, lamp);
         }
       }
     }

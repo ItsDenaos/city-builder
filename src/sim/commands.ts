@@ -15,6 +15,8 @@ import {
   METRO_TUNNEL_COST,
   PIPE_COST,
   POWER_LINE_COST,
+  TERRAFORM_DIG_COST,
+  TERRAFORM_FILL_COST,
   TAX_MAX,
   TAX_MIN,
 } from './config';
@@ -25,12 +27,13 @@ import { autoNeighborhoodName } from './data/agora';
 import { DEPARTMENT_IDS, type DepartmentId } from './data/departments';
 import { getIncident } from './data/incidents';
 import { getOrdinance } from './data/ordinances';
-import { clipRect, gridPositions, normalizeRect, roadPath } from './geometry';
+import { clipRect, curvePath, gridPositions, normalizeRect, roadPath } from './geometry';
 import { nextPlotCost, ownsTile, plotAt, plotBlocker } from './land';
 import { loanPayment } from './systems/economy';
 import { type GameMap, type GameState, NO_BUILDING, inBounds, isUnlocked, tileIndex } from './state';
+import type { TutorialState } from './tutorial';
 import { roadStrip } from './zoning';
-import { type Density, type Point, type Rect, type Speed, TERRAIN_WATER, type ZoneType } from './types';
+import { type Density, type Point, type Rect, type Speed, TERRAIN_LAND, TERRAIN_WATER, type ZoneType } from './types';
 
 /**
  * Toda modificación del estado por parte del jugador pasa por un Command.
@@ -38,8 +41,8 @@ import { type Density, type Point, type Rect, type Speed, TERRAIN_WATER, type Zo
  * quedan en un solo sitio.
  */
 export type Command =
-  /** Sin `road`, calle. Una avenida sobre una calle la mejora pagando la diferencia. */
-  | { type: 'buildRoad'; from: Point; to: Point; road?: RoadKind }
+  /** Sin `road`, calle. Una avenida sobre una calle la mejora pagando la diferencia. Con `curve`, en curva. */
+  | { type: 'buildRoad'; from: Point; to: Point; road?: RoadKind; curve?: boolean }
   /** Con `strip`, solo las casillas a esa distancia (a pie) de una carretera: zonificar en franjas. */
   | { type: 'zone'; rect: Rect; zone: ZoneType; density: Density; strip?: number }
   | { type: 'dezone'; rect: Rect }
@@ -52,6 +55,8 @@ export type Command =
   | { type: 'buildMetro'; from: Point; to: Point }
   | { type: 'removeMetro'; rect: Rect }
   | { type: 'bulldoze'; rect: Rect }
+  /** Editor de terreno (fase 21): excavar (agua) o rellenar (tierra) un rectángulo sin nada construido. */
+  | { type: 'terraform'; rect: Rect; to: 'land' | 'water' }
   | { type: 'setSpeed'; speed: Speed }
   | { type: 'setTaxRate'; zone: ZoneType; rate: number }
   /** Financiación de un departamento, en % (múltiplo de FUNDING_STEP entre FUNDING_MIN y FUNDING_MAX). */
@@ -67,7 +72,9 @@ export type Command =
   /** Comprar la parcela de terreno que contiene la casilla `at`. */
   | { type: 'buyPlot'; at: Point }
   /** Elegir una opción del evento pendiente. */
-  | { type: 'decide'; choice: number };
+  | { type: 'decide'; choice: number }
+  /** La guía de primeros pasos avanza o se cierra (null). La interfaz lo pide así para que llegue a la simulación en segundo plano. */
+  | { type: 'setTutorial'; tutorial: TutorialState | null };
 
 export interface CommandResult {
   ok: boolean;
@@ -111,7 +118,7 @@ const fail = (reason: string): Plan => ({ result: { ok: false, cost: 0, affected
 function plan(state: GameState, cmd: Command): Plan {
   switch (cmd.type) {
     case 'buildRoad':
-      return planRoad(state, cmd.from, cmd.to, cmd.road ?? 'street');
+      return planRoad(state, cmd.from, cmd.to, cmd.road ?? 'street', cmd.curve);
     case 'zone':
       return planZone(state, cmd.rect, cmd.zone, cmd.density, cmd.strip);
     case 'dezone':
@@ -130,6 +137,8 @@ function plan(state: GameState, cmd: Command): Plan {
       return planRemoveMetro(state, cmd.rect);
     case 'bulldoze':
       return planBulldoze(state, cmd.rect);
+    case 'terraform':
+      return planTerraform(state, cmd.rect, cmd.to);
     case 'setSpeed':
       return { result: ok(0, 0), apply: () => void (state.time.speed = cmd.speed) };
     case 'setTaxRate':
@@ -152,6 +161,8 @@ function plan(state: GameState, cmd: Command): Plan {
       return planBuyPlot(state, cmd.at);
     case 'decide':
       return planDecide(state, cmd.choice);
+    case 'setTutorial':
+      return { result: ok(0, 0), apply: () => void (state.tutorial = cmd.tutorial ? { ...cmd.tutorial } : null) };
   }
 }
 
@@ -193,12 +204,12 @@ function clearPowerLine(map: GameMap, i: number): void {
 /** Casilla ocupada por un edificio colocado o por uno que creció en una zona. */
 const isBuilt = (map: GameMap, i: number) => map.building[i] !== NO_BUILDING || map.lotLevel[i] > 0;
 
-function planRoad(state: GameState, from: Point, to: Point, kind: RoadKind): Plan {
+function planRoad(state: GameState, from: Point, to: Point, kind: RoadKind, curve = false): Plan {
   const { map } = state;
   const def = ROADS[kind];
   const toBuild: number[] = [];
   let cost = 0;
-  for (const p of roadPath(from, to)) {
+  for (const p of curve ? curvePath(from, to) : roadPath(from, to)) {
     if (!inBounds(map, p.x, p.y)) return fail('Fuera del mapa');
     if (!ownsTile(state, p.x, p.y)) return fail(NOT_OWNED);
     const i = tileIndex(map, p.x, p.y);
@@ -561,6 +572,40 @@ export function removeBuilding(state: GameState, id: number): void {
   const { map } = state;
   for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) map.building[tileIndex(map, x, y)] = NO_BUILDING;
   state.buildings.delete(id);
+}
+
+/**
+ * Editor de terreno: solo cambia casillas libres (sin calle, edificio ni lote construido). Excavar quita la
+ * zona y el tendido que hubiera; las tuberías y los túneles, que van bajo tierra, se quedan.
+ */
+function planTerraform(state: GameState, rect: Rect, to: 'land' | 'water'): Plan {
+  const { map } = state;
+  const target = to === 'water' ? TERRAIN_WATER : TERRAIN_LAND;
+  const tiles: number[] = [];
+  let blocked = 0;
+  const skipped = forEachTile(state, rect, (i) => {
+    if (map.terrain[i] === target) return;
+    if (map.road[i] || isBuilt(map, i)) blocked++;
+    else tiles.push(i);
+  });
+  if (!tiles.length) {
+    if (blocked) return fail('Hay calles o edificios: demuélelos antes de cambiar el terreno');
+    if (skipped) return fail(NOT_OWNED);
+    return fail(to === 'water' ? 'Ya es agua' : 'Ya es tierra');
+  }
+  const cost = tiles.length * (to === 'water' ? TERRAFORM_DIG_COST : TERRAFORM_FILL_COST);
+  return {
+    result: ok(cost, tiles.length),
+    apply: () => {
+      for (const i of tiles) {
+        map.terrain[i] = target;
+        if (to === 'water') {
+          clearZone(map, i);
+          clearPowerLine(map, i);
+        }
+      }
+    },
+  };
 }
 
 function planBulldoze(state: GameState, rect: Rect): Plan {

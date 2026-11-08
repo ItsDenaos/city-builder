@@ -12,7 +12,18 @@ export interface Settings {
   reducedMotion: number;
   /** Consejos del asesor (los avisos graves salen siempre). */
   advisor: number;
+  /** Volumen del sonido, 0-1 (fase 20). */
+  volume: number;
+  /** Ciclo de día y noche (fase 20); sin él, siempre es de día. */
+  dayNight: number;
+  /** Paleta para daltonismo (fase 21): 0 normal, 1 rojo-verde, 2 azul-amarillo. */
+  colorVision: number;
+  /** Idioma (fase 21): 0 español, 1 inglés. */
+  language: number;
 }
+
+/** Paleta de cada valor del ajuste `colorVision`. */
+export const COLOR_VISION_MODES = ['normal', 'redGreen', 'blueYellow'] as const;
 
 export interface SettingField {
   key: keyof Settings;
@@ -27,6 +38,14 @@ const NO_YES = [
 ];
 
 export const SETTING_FIELDS: readonly SettingField[] = [
+  {
+    key: 'language',
+    label: 'Idioma',
+    options: [
+      { value: 0, label: 'Español' },
+      { value: 1, label: 'English' },
+    ],
+  },
   {
     key: 'autosaveMonths',
     label: 'Autoguardado',
@@ -51,6 +70,29 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   },
   { key: 'reducedMotion', label: 'Reducir animaciones', options: NO_YES },
   { key: 'advisor', label: 'Consejos del asesor', detail: 'Los avisos graves (números rojos, bancarrota) se muestran siempre', options: NO_YES },
+  {
+    key: 'volume',
+    label: 'Sonido',
+    detail: 'Ambiente de la ciudad, tiempo y avisos, generados por el juego',
+    options: [
+      { value: 0, label: 'No' },
+      { value: 0.25, label: '25 %' },
+      { value: 0.5, label: '50 %' },
+      { value: 0.75, label: '75 %' },
+      { value: 1, label: '100 %' },
+    ],
+  },
+  { key: 'dayNight', label: 'Ciclo de día y noche', detail: 'Un día dura unos 4 minutos de juego', options: NO_YES },
+  {
+    key: 'colorVision',
+    label: 'Colores para daltonismo',
+    detail: 'Zonas, estados y vistas de datos con colores que se distinguen',
+    options: [
+      { value: 0, label: 'Normales' },
+      { value: 1, label: 'Rojo-verde' },
+      { value: 2, label: 'Azul-amarillo' },
+    ],
+  },
 ];
 
 const KEY = 'akropolis.settings';
@@ -63,7 +105,7 @@ function defaults(): Settings {
   } catch {
     // sin ventana (tests)
   }
-  return { autosaveMonths: 3, edgeScroll: 0, uiScale: 1, reducedMotion: reduced ? 1 : 0, advisor: 1 };
+  return { autosaveMonths: 3, edgeScroll: 0, uiScale: 1, reducedMotion: reduced ? 1 : 0, advisor: 1, volume: 0.5, dayNight: 1, colorVision: 0, language: 0 };
 }
 
 /** Ajustes guardados, con cada valor validado contra sus opciones (los que no valen toman el de serie). */
